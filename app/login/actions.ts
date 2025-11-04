@@ -1,9 +1,9 @@
-import 'server-only';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 
 export async function signInAction(formData: FormData) {
+  'use server';
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
 
@@ -28,6 +28,7 @@ export async function signInAction(formData: FormData) {
 }
 
 export async function signUpAction(formData: FormData) {
+  'use server';
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const name = formData.get('name') as string;
