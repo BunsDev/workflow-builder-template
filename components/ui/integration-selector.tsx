@@ -2,7 +2,6 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -12,7 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Spinner } from "@/components/ui/spinner";
 import { api, type Integration, type IntegrationType } from "@/lib/api-client";
 import { IntegrationFormDialog } from "@/components/settings/integration-form-dialog";
 
@@ -57,7 +55,8 @@ export function IntegrationSelector({
 
   useEffect(() => {
     loadIntegrations();
-  }, [integrationType, value, onChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [integrationType]);
 
   const handleValueChange = (newValue: string) => {
     if (newValue === "__new__") {
@@ -79,12 +78,11 @@ export function IntegrationSelector({
     return (
       <div className="space-y-2">
         {label && <Label>{label}</Label>}
-        <div className="flex items-center gap-2">
-          <Spinner className="size-4" />
-          <span className="text-muted-foreground text-sm">
-            Loading integrations...
-          </span>
-        </div>
+        <Select disabled value="">
+          <SelectTrigger className="flex-1">
+            <SelectValue placeholder="Loading..." />
+          </SelectTrigger>
+        </Select>
       </div>
     );
   }
