@@ -22,7 +22,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { Input } from "@/components/ui/input";
-import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
 import { generateWorkflowCode } from "@/lib/workflow-codegen";
@@ -152,8 +151,6 @@ const PanelInner = () => {
   const [showDeleteEdgeAlert, setShowDeleteEdgeAlert] = useState(false);
   const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
-  const [_selectedIntegration, setSelectedIntegration] =
-    useState<string>("resend");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useAtom(propertiesPanelActiveTabAtom);
   const refreshRunsRef = useRef<(() => Promise<void>) | null>(null);
@@ -407,88 +404,6 @@ const PanelInner = () => {
                   value={currentWorkflowId || "Not saved"}
                 />
               </div>
-
-              <div className="space-y-3">
-                <Label>Integrations</Label>
-                <div className="rounded-md border bg-muted/30 p-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50"
-                      onClick={() => {
-                        setSelectedIntegration("resend");
-                        setShowIntegrationsDialog(true);
-                      }}
-                      type="button"
-                    >
-                      <IntegrationIcon
-                        className="size-4"
-                        integration="resend"
-                      />
-                      <span className="text-xs">Resend</span>
-                      <div className="ml-auto size-2 rounded-full bg-muted" />
-                    </button>
-                    <button
-                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50"
-                      onClick={() => {
-                        setSelectedIntegration("slack");
-                        setShowIntegrationsDialog(true);
-                      }}
-                      type="button"
-                    >
-                      <IntegrationIcon className="size-4" integration="slack" />
-                      <span className="text-xs">Slack</span>
-                      <div className="ml-auto size-2 rounded-full bg-muted" />
-                    </button>
-                    <button
-                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50"
-                      onClick={() => {
-                        setSelectedIntegration("linear");
-                        setShowIntegrationsDialog(true);
-                      }}
-                      type="button"
-                    >
-                      <IntegrationIcon
-                        className="size-4"
-                        integration="linear"
-                      />
-                      <span className="text-xs">Linear</span>
-                      <div className="ml-auto size-2 rounded-full bg-muted" />
-                    </button>
-                    <button
-                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50"
-                      onClick={() => {
-                        setSelectedIntegration("ai-gateway");
-                        setShowIntegrationsDialog(true);
-                      }}
-                      type="button"
-                    >
-                      <IntegrationIcon
-                        className="size-4"
-                        integration="vercel"
-                      />
-                      <span className="text-xs">AI Gateway</span>
-                      <div className="ml-auto size-2 rounded-full bg-muted" />
-                    </button>
-                    <button
-                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50"
-                      onClick={() => {
-                        setSelectedIntegration("database");
-                        setShowIntegrationsDialog(true);
-                      }}
-                      type="button"
-                    >
-                      <div className="flex size-4 items-center justify-center rounded bg-blue-500 text-white text-xs">
-                        DB
-                      </div>
-                      <span className="text-xs">Database</span>
-                      <div className="ml-auto size-2 rounded-full bg-muted" />
-                    </button>
-                  </div>
-                  <p className="mt-2 text-muted-foreground text-xs">
-                    Click an integration to manage in Settings
-                  </p>
-                </div>
-              </div>
             </div>
             <div className="flex shrink-0 items-center gap-2 border-t p-4">
               <Button
@@ -729,20 +644,16 @@ const PanelInner = () => {
                   integrationMap[actionType as keyof typeof integrationMap];
 
                 return integrationType ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-sm">
-                      Integration
-                    </span>
-                    <IntegrationSelector
-                      integrationType={integrationType}
-                      onChange={(id) => handleUpdateConfig("integrationId", id)}
-                      onOpenSettings={() => setShowIntegrationsDialog(true)}
-                      value={
-                        (selectedNode.data.config?.integrationId as string) ||
-                        ""
-                      }
-                    />
-                  </div>
+                  <IntegrationSelector
+                    integrationType={integrationType}
+                    label="Integration"
+                    onChange={(id) => handleUpdateConfig("integrationId", id)}
+                    onOpenSettings={() => setShowIntegrationsDialog(true)}
+                    value={
+                      (selectedNode.data.config?.integrationId as string) ||
+                      ""
+                    }
+                  />
                 ) : null;
               })()}
             </div>

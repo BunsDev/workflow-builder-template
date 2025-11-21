@@ -2,7 +2,6 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -90,7 +89,6 @@ export function IntegrationSelector({
   if (integrations.length === 0) {
     return (
       <div className="space-y-2">
-        {label && <Label>{label}</Label>}
         <Select disabled={disabled} onValueChange={handleValueChange} value={value}>
           <SelectTrigger className="flex-1">
             <div className="flex items-center gap-2">
@@ -118,8 +116,8 @@ export function IntegrationSelector({
   }
 
   return (
-    <div className="space-y-2">
-      {label && <Label>{label}</Label>}
+    <div className="flex items-center gap-2">
+      {label && <span className="text-muted-foreground text-sm">{label}</span>}
       <Select disabled={disabled} onValueChange={handleValueChange} value={value}>
         <SelectTrigger className="flex-1">
           <SelectValue placeholder="Select integration..." />
