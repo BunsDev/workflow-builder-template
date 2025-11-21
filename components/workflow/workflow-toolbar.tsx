@@ -1,5 +1,6 @@
 "use client";
 
+import { useReactFlow } from "@xyflow/react";
 import { useAtom, useSetAtom } from "jotai";
 import {
   Check,
@@ -7,10 +8,12 @@ import {
   Download,
   Loader2,
   Play,
+  Plus,
   Redo2,
   Save,
   Undo2,
 } from "lucide-react";
+import { nanoid } from "nanoid";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -45,6 +48,7 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import {
+  addNodeAtom,
   canRedoAtom,
   canUndoAtom,
   clearWorkflowAtom,
@@ -307,6 +311,7 @@ function useWorkflowState() {
   );
   const undo = useSetAtom(undoAtom);
   const redo = useSetAtom(redoAtom);
+  const addNode = useSetAtom(addNodeAtom);
   const [canUndo] = useAtom(canUndoAtom);
   const [canRedo] = useAtom(canRedoAtom);
   const { data: session } = useSession();
@@ -366,6 +371,7 @@ function useWorkflowState() {
     setHasUnsavedChanges,
     undo,
     redo,
+    addNode,
     canUndo,
     canRedo,
     session,
@@ -573,7 +579,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   };
 }
 
-// Toolbar Actions Component - handles undo/redo, save, and run buttons
+// Toolbar Actions Component - handles add step, undo/redo, save, and run buttons
 function ToolbarActions({
   workflowId,
   state,
@@ -583,12 +589,103 @@ function ToolbarActions({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
+  const { screenToFlowPosition } = useReactFlow();
+  
   if (!workflowId) {
     return null;
   }
 
+  const handleAddStep = () => {
+    // Get the ReactFlow wrapper (the visible canvas container)
+    const flowWrapper = document.querySelector('.react-flow');
+    if (!flowWrapper) return;
+    
+    const rect = flowWrapper.getBoundingClientRect();
+    // Calculate center in absolute screen coordinates
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    // Convert to flow coordinates
+    const position = screenToFlowPosition({ x: centerX, y: centerY });
+    
+    // Adjust for node dimensions to center it properly
+    // Action node is 192px wide and 192px tall (w-48 h-48 in Tailwind)
+    const nodeWidth = 192;
+    const nodeHeight = 192;
+    position.x -= nodeWidth / 2;
+    position.y -= nodeHeight / 2;
+    
+    // Check if there's already a node at this position
+    const offset = 20; // Offset distance in pixels
+    const threshold = 20; // How close nodes need to be to be considered overlapping
+    
+    let finalPosition = { ...position };
+    let hasOverlap = true;
+    let attempts = 0;
+    const maxAttempts = 20; // Prevent infinite loop
+    
+    while (hasOverlap && attempts < maxAttempts) {
+      hasOverlap = state.nodes.some((node) => {
+        const dx = Math.abs(node.position.x - finalPosition.x);
+        const dy = Math.abs(node.position.y - finalPosition.y);
+        return dx < threshold && dy < threshold;
+      });
+      
+      if (hasOverlap) {
+        // Offset diagonally down-right
+        finalPosition.x += offset;
+        finalPosition.y += offset;
+        attempts++;
+      }
+    }
+    
+    // Create new action node
+    const newNode: WorkflowNode = {
+      id: nanoid(),
+      type: "action",
+      position: finalPosition,
+      data: {
+        label: "",
+        description: "",
+        type: "action",
+        config: {},
+        status: "idle",
+      },
+    };
+    
+    state.addNode(newNode);
+  };
+
   return (
     <>
+      {/* Add Step - Mobile Vertical */}
+      <ButtonGroup className="flex lg:hidden" orientation="vertical">
+        <Button
+          className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
+          disabled={state.isGenerating}
+          onClick={handleAddStep}
+          size="icon"
+          title="Add Step"
+          variant="secondary"
+        >
+          <Plus className="size-4" />
+        </Button>
+      </ButtonGroup>
+
+      {/* Add Step - Desktop Horizontal */}
+      <ButtonGroup className="hidden lg:flex" orientation="horizontal">
+        <Button
+          className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
+          disabled={state.isGenerating}
+          onClick={handleAddStep}
+          size="icon"
+          title="Add Step"
+          variant="secondary"
+        >
+          <Plus className="size-4" />
+        </Button>
+      </ButtonGroup>
+
       {/* Undo/Redo - Mobile Vertical */}
       <ButtonGroup className="flex lg:hidden" orientation="vertical">
         <Button
