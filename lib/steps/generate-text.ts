@@ -9,7 +9,7 @@ import "server-only";
 
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
-import { fetchWorkflowCredentials } from "../credential-fetcher";
+import { fetchCredentials } from "../credential-fetcher";
 
 type SchemaField = {
   name: string;
@@ -60,7 +60,7 @@ export async function generateTextStep(input: {
   "use step";
 
   const credentials = input.workflowId
-    ? await fetchWorkflowCredentials(input.workflowId)
+    ? await fetchCredentials(input.workflowId)
     : {};
 
   const apiKey = credentials.AI_GATEWAY_API_KEY || credentials.OPENAI_API_KEY;

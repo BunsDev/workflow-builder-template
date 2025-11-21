@@ -15,7 +15,7 @@
 import "server-only";
 
 import { Resend } from "resend";
-import { fetchWorkflowCredentials } from "../credential-fetcher";
+import { fetchCredentials } from "../credential-fetcher";
 
 export async function sendEmailStep(input: {
   workflowId?: string; // Reference to fetch credentials (safe to log)
@@ -30,7 +30,7 @@ export async function sendEmailStep(input: {
   // SECURITY: Fetch credentials using the workflow ID reference
   // This happens in a secure, non-persisted context (not logged by observability)
   const credentials = input.workflowId
-    ? await fetchWorkflowCredentials(input.workflowId)
+    ? await fetchCredentials(input.workflowId)
     : {};
 
   console.log(
