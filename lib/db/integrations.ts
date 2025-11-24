@@ -1,11 +1,6 @@
 import "server-only";
 
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-} from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "./index";
 import { integrations, type NewIntegration } from "./schema";
@@ -17,19 +12,24 @@ const ENCRYPTION_KEY_ENV = "INTEGRATION_ENCRYPTION_KEY";
 
 /**
  * Get or generate encryption key from environment
- * Accepts any string and hashes it to a 32-byte key
+ * Key should be a 32-byte hex string (64 characters)
  */
 function getEncryptionKey(): Buffer {
-  const keyString = process.env[ENCRYPTION_KEY_ENV];
+  const keyHex = process.env[ENCRYPTION_KEY_ENV];
 
-  if (!keyString) {
+  if (!keyHex) {
     throw new Error(
       `${ENCRYPTION_KEY_ENV} environment variable is required for encrypting integration credentials`
     );
   }
 
-  // Hash the input string to get a consistent 32-byte key
-  return createHash("sha256").update(keyString).digest();
+  if (keyHex.length !== 64) {
+    throw new Error(
+      `${ENCRYPTION_KEY_ENV} must be a 64-character hex string (32 bytes)`
+    );
+  }
+
+  return Buffer.from(keyHex, "hex");
 }
 
 /**
