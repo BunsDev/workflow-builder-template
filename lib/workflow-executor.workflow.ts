@@ -413,6 +413,16 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
       return;
     }
 
+    // Skip disabled nodes
+    if (node.data.enabled === false) {
+      console.log("[Workflow Executor] Skipping disabled node:", nodeId);
+      const nextNodes = edgesBySource.get(nodeId) || [];
+      await Promise.all(
+        nextNodes.map((nextNodeId) => executeNode(nextNodeId, visited))
+      );
+      return;
+    }
+
     let logInfo = { logId: "", startTime: Date.now() };
 
     try {
