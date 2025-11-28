@@ -249,6 +249,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
         // Clear and close
         setPrompt("");
         setIsExpanded(false);
+        setIsFocused(false);
         inputRef.current?.blur();
       } catch (error) {
         console.error("Failed to generate workflow:", error);
