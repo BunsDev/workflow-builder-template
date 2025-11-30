@@ -110,12 +110,6 @@ export type IntegrationPlugin = {
     envVar?: string; // Environment variable this field maps to (e.g., "RESEND_API_KEY")
   }>;
 
-  // Additional environment variables not tied to form fields (e.g., alternative API keys)
-  extraEnvVars?: Array<{
-    name: string;
-    description: string;
-  }>;
-
   // Testing configuration (lazy-loaded to avoid bundling Node.js packages in client)
   testConfig?: {
     // Returns a promise that resolves to the test function
@@ -358,7 +352,7 @@ export function getDependenciesForActions(
 }
 
 /**
- * Get environment variables for a single plugin (from formFields + extraEnvVars)
+ * Get environment variables for a single plugin (from formFields)
  */
 export function getPluginEnvVars(
   plugin: IntegrationPlugin
@@ -373,11 +367,6 @@ export function getPluginEnvVars(
         description: field.helpText || field.label,
       });
     }
-  }
-
-  // Add extra env vars not tied to form fields
-  if (plugin.extraEnvVars) {
-    envVars.push(...plugin.extraEnvVars);
   }
 
   return envVars;

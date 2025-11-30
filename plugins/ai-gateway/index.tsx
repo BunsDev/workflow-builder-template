@@ -27,12 +27,6 @@ const aiGatewayPlugin: IntegrationPlugin = {
     },
   ],
 
-  // Additional env vars for alternative API keys (not tied to form fields)
-  extraEnvVars: [
-    { name: "OPENAI_API_KEY", description: "OpenAI API key (alternative)" },
-    { name: "GOOGLE_AI_API_KEY", description: "Google AI API key (for Gemini)" },
-  ],
-
   testConfig: {
     getTestFunction: async () => {
       const { testAiGateway } = await import("./test");
