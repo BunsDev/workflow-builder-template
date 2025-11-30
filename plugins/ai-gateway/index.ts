@@ -97,6 +97,7 @@ const aiGatewayPlugin: IntegrationPlugin = {
             "Enter your prompt here. Use {{NodeName.field}} to reference previous outputs.",
           rows: 4,
           example: "Summarize the following text: {{Scrape.markdown}}",
+          required: true,
         },
         {
           key: "aiSchema",
@@ -137,6 +138,7 @@ const aiGatewayPlugin: IntegrationPlugin = {
             "Describe the image you want to generate. Use {{NodeName.field}} to reference previous outputs.",
           rows: 4,
           example: "A serene mountain landscape at sunset",
+          required: true,
         },
       ],
       codegenTemplate: generateImageCodegenTemplate,

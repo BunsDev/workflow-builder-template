@@ -63,6 +63,7 @@ const linearPlugin: IntegrationPlugin = {
           type: "template-input",
           placeholder: "Bug report or {{NodeName.title}}",
           example: "Bug: Login button not working",
+          required: true,
         },
         {
           key: "ticketDescription",

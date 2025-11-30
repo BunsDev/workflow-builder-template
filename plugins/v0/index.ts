@@ -52,6 +52,7 @@ const v0Plugin: IntegrationPlugin = {
           placeholder: "Create a landing page for a new product",
           rows: 4,
           example: "Create a dashboard with a line chart showing DAU over time",
+          required: true,
         },
         {
           key: "system",
@@ -77,6 +78,7 @@ const v0Plugin: IntegrationPlugin = {
           type: "template-input",
           placeholder: "chat_123 or {{CreateChat.chatId}}",
           example: "{{CreateChat.chatId}}",
+          required: true,
         },
         {
           key: "message",
@@ -85,6 +87,7 @@ const v0Plugin: IntegrationPlugin = {
           placeholder: "Add dark mode",
           rows: 4,
           example: "Add dark mode support",
+          required: true,
         },
       ],
       codegenTemplate: sendMessageCodegenTemplate,

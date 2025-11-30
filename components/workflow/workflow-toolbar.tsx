@@ -128,6 +128,199 @@ const BUILTIN_INTEGRATION_LABELS: Record<string, string> = {
   database: "Database",
 };
 
+// Type for broken template reference info
+type BrokenTemplateReferenceInfo = {
+  nodeId: string;
+  nodeLabel: string;
+  brokenReferences: Array<{
+    fieldKey: string;
+    fieldLabel: string;
+    referencedNodeId: string;
+    displayText: string;
+  }>;
+};
+
+// Extract template variables from a string and check if they reference existing nodes
+function extractTemplateReferences(
+  value: unknown
+): Array<{ nodeId: string; displayText: string }> {
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const pattern = /\{\{@([^:]+):([^}]+)\}\}/g;
+  const matches = value.matchAll(pattern);
+
+  return Array.from(matches).map((match) => ({
+    nodeId: match[1],
+    displayText: match[2],
+  }));
+}
+
+// Recursively extract all template references from a config object
+function extractAllTemplateReferences(
+  config: Record<string, unknown>,
+  prefix = ""
+): Array<{ field: string; nodeId: string; displayText: string }> {
+  const results: Array<{ field: string; nodeId: string; displayText: string }> =
+    [];
+
+  for (const [key, value] of Object.entries(config)) {
+    const fieldPath = prefix ? `${prefix}.${key}` : key;
+
+    if (typeof value === "string") {
+      const refs = extractTemplateReferences(value);
+      for (const ref of refs) {
+        results.push({ field: fieldPath, ...ref });
+      }
+    } else if (
+      typeof value === "object" &&
+      value !== null &&
+      !Array.isArray(value)
+    ) {
+      results.push(
+        ...extractAllTemplateReferences(
+          value as Record<string, unknown>,
+          fieldPath
+        )
+      );
+    }
+  }
+
+  return results;
+}
+
+// Get broken template references for workflow nodes
+function getBrokenTemplateReferences(
+  nodes: WorkflowNode[]
+): BrokenTemplateReferenceInfo[] {
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const brokenByNode: BrokenTemplateReferenceInfo[] = [];
+
+  for (const node of nodes) {
+    // Skip disabled nodes
+    if (node.data.enabled === false) {
+      continue;
+    }
+
+    const config = node.data.config as Record<string, unknown> | undefined;
+    if (!config || typeof config !== "object") {
+      continue;
+    }
+
+    const allRefs = extractAllTemplateReferences(config);
+    const brokenRefs = allRefs.filter((ref) => !nodeIds.has(ref.nodeId));
+
+    if (brokenRefs.length > 0) {
+      // Get action for label lookups
+      const actionType = config.actionType as string | undefined;
+      const action = actionType ? findActionById(actionType) : undefined;
+
+      brokenByNode.push({
+        nodeId: node.id,
+        nodeLabel: node.data.label || action?.label || "Unnamed Step",
+        brokenReferences: brokenRefs.map((ref) => {
+          // Look up human-readable field label
+          const configField = action?.configFields.find(
+            (f) => f.key === ref.field
+          );
+          return {
+            fieldKey: ref.field,
+            fieldLabel: configField?.label || ref.field,
+            referencedNodeId: ref.nodeId,
+            displayText: ref.displayText,
+          };
+        }),
+      });
+    }
+  }
+
+  return brokenByNode;
+}
+
+// Type for missing required fields info
+type MissingRequiredFieldInfo = {
+  nodeId: string;
+  nodeLabel: string;
+  missingFields: Array<{
+    fieldKey: string;
+    fieldLabel: string;
+  }>;
+};
+
+// Check if a field value is effectively empty
+function isFieldEmpty(value: unknown): boolean {
+  if (value === undefined || value === null) {
+    return true;
+  }
+  if (typeof value === "string" && value.trim() === "") {
+    return true;
+  }
+  return false;
+}
+
+// Check if a conditional field should be shown based on current config
+function shouldShowField(
+  field: { showWhen?: { field: string; equals: string } },
+  config: Record<string, unknown>
+): boolean {
+  if (!field.showWhen) {
+    return true;
+  }
+  return config[field.showWhen.field] === field.showWhen.equals;
+}
+
+// Get missing required fields for a single node
+function getNodeMissingFields(
+  node: WorkflowNode
+): MissingRequiredFieldInfo | null {
+  if (node.data.enabled === false) {
+    return null;
+  }
+
+  const config = node.data.config as Record<string, unknown> | undefined;
+  const actionType = config?.actionType as string | undefined;
+  if (!actionType) {
+    return null;
+  }
+
+  const action = findActionById(actionType);
+  if (!action) {
+    return null;
+  }
+
+  const missingFields = action.configFields
+    .filter(
+      (field) =>
+        field.required &&
+        shouldShowField(field, config || {}) &&
+        isFieldEmpty(config?.[field.key])
+    )
+    .map((field) => ({
+      fieldKey: field.key,
+      fieldLabel: field.label,
+    }));
+
+  if (missingFields.length === 0) {
+    return null;
+  }
+
+  return {
+    nodeId: node.id,
+    nodeLabel: node.data.label || action.label || "Unnamed Step",
+    missingFields,
+  };
+}
+
+// Get missing required fields for workflow nodes
+function getMissingRequiredFields(
+  nodes: WorkflowNode[]
+): MissingRequiredFieldInfo[] {
+  return nodes
+    .map(getNodeMissingFields)
+    .filter((result): result is MissingRequiredFieldInfo => result !== null);
+}
+
 // Get missing integrations for workflow nodes
 // Uses the plugin registry to determine which integrations are required
 // Also handles built-in actions that aren't in the plugin registry
@@ -329,6 +522,16 @@ function useWorkflowHandlers({
   const [missingIntegrations, setMissingIntegrations] = useState<
     MissingIntegrationInfo[]
   >([]);
+  const [showBrokenReferencesDialog, setShowBrokenReferencesDialog] =
+    useState(false);
+  const [brokenReferences, setBrokenReferences] = useState<
+    BrokenTemplateReferenceInfo[]
+  >([]);
+  const [showMissingRequiredFieldsDialog, setShowMissingRequiredFieldsDialog] =
+    useState(false);
+  const [missingRequiredFields, setMissingRequiredFields] = useState<
+    MissingRequiredFieldInfo[]
+  >([]);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup polling interval on unmount
@@ -390,6 +593,22 @@ function useWorkflowHandlers({
       return;
     }
 
+    // Check for broken template references before executing
+    const broken = getBrokenTemplateReferences(nodes);
+    if (broken.length > 0) {
+      setBrokenReferences(broken);
+      setShowBrokenReferencesDialog(true);
+      return;
+    }
+
+    // Check for missing required fields before executing
+    const missingFields = getMissingRequiredFields(nodes);
+    if (missingFields.length > 0) {
+      setMissingRequiredFields(missingFields);
+      setShowMissingRequiredFieldsDialog(true);
+      return;
+    }
+
     // Check for missing integrations before executing
     const missing = getMissingIntegrations(nodes, userIntegrations);
     if (missing.length > 0) {
@@ -407,6 +626,8 @@ function useWorkflowHandlers({
     }
 
     setShowMissingIntegrationsDialog(false);
+    setShowBrokenReferencesDialog(false);
+    setShowMissingRequiredFieldsDialog(false);
     await executeWorkflow();
   };
 
@@ -416,6 +637,12 @@ function useWorkflowHandlers({
     showMissingIntegrationsDialog,
     setShowMissingIntegrationsDialog,
     missingIntegrations,
+    showBrokenReferencesDialog,
+    setShowBrokenReferencesDialog,
+    brokenReferences,
+    showMissingRequiredFieldsDialog,
+    setShowMissingRequiredFieldsDialog,
+    missingRequiredFields,
     handleSave,
     handleExecute,
     handleExecuteAnyway,
@@ -572,6 +799,12 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     showMissingIntegrationsDialog,
     setShowMissingIntegrationsDialog,
     missingIntegrations,
+    showBrokenReferencesDialog,
+    setShowBrokenReferencesDialog,
+    brokenReferences,
+    showMissingRequiredFieldsDialog,
+    setShowMissingRequiredFieldsDialog,
+    missingRequiredFields,
     handleSave,
     handleExecute,
     handleExecuteAnyway,
@@ -724,6 +957,12 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     showMissingIntegrationsDialog,
     setShowMissingIntegrationsDialog,
     missingIntegrations,
+    showBrokenReferencesDialog,
+    setShowBrokenReferencesDialog,
+    brokenReferences,
+    showMissingRequiredFieldsDialog,
+    setShowMissingRequiredFieldsDialog,
+    missingRequiredFields,
     handleSave,
     handleExecute,
     handleExecuteAnyway,
@@ -1219,6 +1458,155 @@ function MissingIntegrationsDialog({
   );
 }
 
+// Broken References Dialog Component
+function BrokenReferencesDialog({
+  state,
+  actions,
+}: {
+  state: ReturnType<typeof useWorkflowState>;
+  actions: ReturnType<typeof useWorkflowActions>;
+}) {
+  const handleGoToStep = (nodeId: string) => {
+    actions.setShowBrokenReferencesDialog(false);
+    state.setSelectedNodeId(nodeId);
+  };
+
+  return (
+    <AlertDialog
+      onOpenChange={actions.setShowBrokenReferencesDialog}
+      open={actions.showBrokenReferencesDialog}
+    >
+      <AlertDialogContent className="max-w-lg">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="size-5 text-red-500" />
+            Broken References
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <p>
+                This workflow has steps that reference nodes which no longer
+                exist. The workflow will likely fail without fixing these
+                references.
+              </p>
+              <div className="space-y-2">
+                {actions.brokenReferences.map((broken) => (
+                  <button
+                    className="flex w-full items-start gap-3 rounded-lg border bg-muted/50 p-3 text-left transition-colors hover:bg-muted"
+                    key={broken.nodeId}
+                    onClick={() => handleGoToStep(broken.nodeId)}
+                    type="button"
+                  >
+                    <AlertTriangle className="mt-0.5 size-5 shrink-0 text-red-500" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground text-sm">
+                        {broken.nodeLabel}
+                      </p>
+                      <div className="mt-1 space-y-1">
+                        {broken.brokenReferences.map((ref, idx) => (
+                          <p
+                            className="text-muted-foreground text-xs"
+                            key={`${ref.fieldKey}-${idx}`}
+                          >
+                            <span className="font-mono text-red-600 dark:text-red-400">
+                              {ref.displayText}
+                            </span>{" "}
+                            in {ref.fieldLabel}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button onClick={actions.handleExecuteAnyway} variant="outline">
+            Run Anyway
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+// Missing Required Fields Dialog Component
+function MissingRequiredFieldsDialog({
+  state,
+  actions,
+}: {
+  state: ReturnType<typeof useWorkflowState>;
+  actions: ReturnType<typeof useWorkflowActions>;
+}) {
+  const handleGoToStep = (nodeId: string) => {
+    actions.setShowMissingRequiredFieldsDialog(false);
+    state.setSelectedNodeId(nodeId);
+  };
+
+  return (
+    <AlertDialog
+      onOpenChange={actions.setShowMissingRequiredFieldsDialog}
+      open={actions.showMissingRequiredFieldsDialog}
+    >
+      <AlertDialogContent className="max-w-lg">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="size-5 text-orange-500" />
+            Missing Required Fields
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <p>
+                This workflow has steps with required fields that are not filled
+                in. The workflow will likely fail without them.
+              </p>
+              <div className="space-y-2">
+                {actions.missingRequiredFields.map((node) => (
+                  <button
+                    className="flex w-full items-start gap-3 rounded-lg border bg-muted/50 p-3 text-left transition-colors hover:bg-muted"
+                    key={node.nodeId}
+                    onClick={() => handleGoToStep(node.nodeId)}
+                    type="button"
+                  >
+                    <AlertTriangle className="mt-0.5 size-5 shrink-0 text-orange-500" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground text-sm">
+                        {node.nodeLabel}
+                      </p>
+                      <div className="mt-1 space-y-1">
+                        {node.missingFields.map((field) => (
+                          <p
+                            className="text-muted-foreground text-xs"
+                            key={field.fieldKey}
+                          >
+                            Missing:{" "}
+                            <span className="font-medium text-orange-600 dark:text-orange-400">
+                              {field.fieldLabel}
+                            </span>
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button onClick={actions.handleExecuteAnyway} variant="outline">
+            Run Anyway
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 // Workflow Dialogs Component
 function WorkflowDialogsComponent({
   state,
@@ -1452,6 +1840,8 @@ function WorkflowDialogsComponent({
       </Dialog>
 
       <MissingIntegrationsDialog actions={actions} />
+      <BrokenReferencesDialog actions={actions} state={state} />
+      <MissingRequiredFieldsDialog actions={actions} state={state} />
     </>
   );
 }

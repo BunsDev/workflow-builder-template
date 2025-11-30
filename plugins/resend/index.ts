@@ -61,6 +61,7 @@ const resendPlugin: IntegrationPlugin = {
           type: "template-input",
           placeholder: "user@example.com or {{NodeName.email}}",
           example: "user@example.com",
+          required: true,
         },
         {
           key: "emailSubject",
@@ -68,6 +69,7 @@ const resendPlugin: IntegrationPlugin = {
           type: "template-input",
           placeholder: "Subject or {{NodeName.title}}",
           example: "Hello from my workflow",
+          required: true,
         },
         {
           key: "emailBody",
@@ -76,6 +78,7 @@ const resendPlugin: IntegrationPlugin = {
           placeholder: "Email content or {{NodeName.description}}",
           rows: 5,
           example: "This is the email body content.",
+          required: true,
         },
       ],
       codegenTemplate: sendEmailCodegenTemplate,

@@ -53,6 +53,7 @@ const firecrawlPlugin: IntegrationPlugin = {
           type: "template-input",
           placeholder: "https://example.com or {{NodeName.url}}",
           example: "https://example.com",
+          required: true,
         },
       ],
       codegenTemplate: scrapeCodegenTemplate,
@@ -71,6 +72,7 @@ const firecrawlPlugin: IntegrationPlugin = {
           type: "template-input",
           placeholder: "Search query or {{NodeName.query}}",
           example: "latest AI news",
+          required: true,
         },
         {
           key: "limit",

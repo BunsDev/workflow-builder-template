@@ -48,6 +48,9 @@ export type ActionConfigField = {
   // Min value (for number fields)
   min?: number;
 
+  // Whether this field is required (defaults to false)
+  required?: boolean;
+
   // Conditional rendering: only show if another field has a specific value
   showWhen?: {
     field: string;

@@ -52,6 +52,7 @@ const slackPlugin: IntegrationPlugin = {
           type: "text",
           placeholder: "#general or {{NodeName.channel}}",
           example: "#general",
+          required: true,
         },
         {
           key: "slackMessage",
@@ -61,6 +62,7 @@ const slackPlugin: IntegrationPlugin = {
             "Your message. Use {{NodeName.field}} to insert data from previous nodes.",
           rows: 4,
           example: "Hello from my workflow!",
+          required: true,
         },
       ],
       codegenTemplate: sendSlackMessageCodegenTemplate,
