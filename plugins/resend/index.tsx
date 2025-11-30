@@ -8,11 +8,7 @@ const resendPlugin: IntegrationPlugin = {
   label: "Resend",
   description: "Send transactional emails",
 
-  icon: {
-    type: "svg",
-    value: "ResendIcon",
-    svgComponent: ResendIcon,
-  },
+  icon: ResendIcon,
 
   formFields: [
     {

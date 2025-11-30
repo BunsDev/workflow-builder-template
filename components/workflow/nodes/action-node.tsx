@@ -142,22 +142,8 @@ const getProviderLogo = (actionType: string) => {
   if (action) {
     const plugin = getIntegration(action.integration);
     if (plugin?.icon) {
-      // Render integration logo based on icon type
-      if (plugin.icon.type === "image") {
-        return (
-          <Image
-            alt={plugin.label}
-            className="size-12"
-            height={48}
-            src={plugin.icon.value}
-            width={48}
-          />
-        );
-      }
-      if (plugin.icon.type === "svg" && plugin.icon.svgComponent) {
-        const SvgIcon = plugin.icon.svgComponent;
-        return <SvgIcon className="size-12" />;
-      }
+      const PluginIcon = plugin.icon;
+      return <PluginIcon className="size-12" />;
     }
   }
 

@@ -9,11 +9,7 @@ const v0Plugin: IntegrationPlugin = {
   label: "v0",
   description: "Generate UI components with AI",
 
-  icon: {
-    type: "svg",
-    value: "V0Icon",
-    svgComponent: V0Icon,
-  },
+  icon: V0Icon,
 
   formFields: [
     {

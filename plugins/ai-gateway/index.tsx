@@ -9,11 +9,7 @@ const aiGatewayPlugin: IntegrationPlugin = {
   label: "AI Gateway",
   description: "Generate text and images using AI models",
 
-  icon: {
-    type: "svg",
-    value: "AiGatewayIcon",
-    svgComponent: AiGatewayIcon,
-  },
+  icon: AiGatewayIcon,
 
   formFields: [
     {

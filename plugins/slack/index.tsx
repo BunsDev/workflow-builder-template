@@ -1,16 +1,14 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { sendSlackMessageCodegenTemplate } from "./codegen/send-slack-message";
+import { SlackIcon } from "./icon";
 
 const slackPlugin: IntegrationPlugin = {
   type: "slack",
   label: "Slack",
   description: "Send messages to Slack channels",
 
-  icon: {
-    type: "image",
-    value: "/integrations/slack.svg",
-  },
+  icon: SlackIcon,
 
   formFields: [
     {

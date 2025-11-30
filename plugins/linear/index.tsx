@@ -2,16 +2,14 @@ import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { createTicketCodegenTemplate } from "./codegen/create-ticket";
 import { findIssuesCodegenTemplate } from "./codegen/find-issues";
+import { LinearIcon } from "./icon";
 
 const linearPlugin: IntegrationPlugin = {
   type: "linear",
   label: "Linear",
   description: "Create and manage issues in Linear",
 
-  icon: {
-    type: "image",
-    value: "/integrations/linear.svg",
-  },
+  icon: LinearIcon,
 
   formFields: [
     {

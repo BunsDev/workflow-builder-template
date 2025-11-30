@@ -9,11 +9,7 @@ const firecrawlPlugin: IntegrationPlugin = {
   label: "Firecrawl",
   description: "Scrape, search, and crawl the web",
 
-  icon: {
-    type: "svg",
-    value: "FirecrawlIcon",
-    svgComponent: FirecrawlIcon,
-  },
+  icon: FirecrawlIcon,
 
   formFields: [
     {

@@ -95,12 +95,8 @@ export type IntegrationPlugin = {
   label: string;
   description: string;
 
-  // Icon (either a named icon from integrations or an inline SVG component)
-  icon: {
-    type: "image" | "svg" | "lucide";
-    value: string; // For image: "/integrations/name.svg", for SVG: component name, for lucide: icon name
-    svgComponent?: React.ComponentType<{ className?: string }>;
-  };
+  // Icon component (should be exported from plugins/[name]/icon.tsx)
+  icon: React.ComponentType<{ className?: string }>;
 
   // Form fields for the integration dialog
   formFields: Array<{
