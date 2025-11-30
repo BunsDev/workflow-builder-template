@@ -55,16 +55,6 @@ export type IntegrationPlugin = {
     svgComponent?: React.ComponentType<{ className?: string }>;
   };
 
-  // Settings component
-  settingsComponent: React.ComponentType<{
-    apiKey: string;
-    hasKey?: boolean;
-    onApiKeyChange: (key: string) => void;
-    showCard?: boolean;
-    config?: Record<string, string>;
-    onConfigChange?: (key: string, value: string) => void;
-  }>;
-
   // Form fields for the integration dialog
   formFields: Array<{
     id: string;

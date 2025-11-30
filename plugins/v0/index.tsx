@@ -3,7 +3,6 @@ import { registerIntegration } from "../registry";
 import { createChatCodegenTemplate } from "./codegen/create-chat";
 import { sendMessageCodegenTemplate } from "./codegen/send-message";
 import { V0Icon } from "./icon";
-import { V0Settings } from "./settings";
 import { CreateChatConfigFields } from "./steps/create-chat/config";
 import { SendMessageConfigFields } from "./steps/send-message/config";
 
@@ -17,8 +16,6 @@ const v0Plugin: IntegrationPlugin = {
     value: "V0Icon",
     svgComponent: V0Icon,
   },
-
-  settingsComponent: V0Settings,
 
   formFields: [
     {

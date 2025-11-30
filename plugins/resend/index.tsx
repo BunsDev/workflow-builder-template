@@ -2,7 +2,6 @@ import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { sendEmailCodegenTemplate } from "./codegen/send-email";
 import { ResendIcon } from "./icon";
-import { ResendSettings } from "./settings";
 import { SendEmailConfigFields } from "./steps/send-email/config";
 
 const resendPlugin: IntegrationPlugin = {
@@ -15,8 +14,6 @@ const resendPlugin: IntegrationPlugin = {
     value: "ResendIcon",
     svgComponent: ResendIcon,
   },
-
-  settingsComponent: ResendSettings,
 
   formFields: [
     {

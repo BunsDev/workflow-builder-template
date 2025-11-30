@@ -3,7 +3,6 @@ import { registerIntegration } from "../registry";
 import { generateImageCodegenTemplate } from "./codegen/generate-image";
 import { generateTextCodegenTemplate } from "./codegen/generate-text";
 import { AiGatewayIcon } from "./icon";
-import { AiGatewaySettings } from "./settings";
 import { GenerateImageConfigFields } from "./steps/generate-image/config";
 import { GenerateTextConfigFields } from "./steps/generate-text/config";
 
@@ -17,8 +16,6 @@ const aiGatewayPlugin: IntegrationPlugin = {
     value: "AiGatewayIcon",
     svgComponent: AiGatewayIcon,
   },
-
-  settingsComponent: AiGatewaySettings,
 
   formFields: [
     {

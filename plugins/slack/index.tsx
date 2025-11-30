@@ -1,7 +1,6 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { sendSlackMessageCodegenTemplate } from "./codegen/send-slack-message";
-import { SlackSettings } from "./settings";
 import { SendSlackMessageConfigFields } from "./steps/send-slack-message/config";
 
 const slackPlugin: IntegrationPlugin = {
@@ -13,8 +12,6 @@ const slackPlugin: IntegrationPlugin = {
     type: "image",
     value: "/integrations/slack.svg",
   },
-
-  settingsComponent: SlackSettings,
 
   formFields: [
     {

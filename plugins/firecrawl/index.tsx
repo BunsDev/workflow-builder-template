@@ -3,7 +3,6 @@ import { registerIntegration } from "../registry";
 import { scrapeCodegenTemplate } from "./codegen/scrape";
 import { searchCodegenTemplate } from "./codegen/search";
 import { FirecrawlIcon } from "./icon";
-import { FirecrawlSettings } from "./settings";
 import { ScrapeConfigFields } from "./steps/scrape/config";
 import { SearchConfigFields } from "./steps/search/config";
 
@@ -17,8 +16,6 @@ const firecrawlPlugin: IntegrationPlugin = {
     value: "FirecrawlIcon",
     svgComponent: FirecrawlIcon,
   },
-
-  settingsComponent: FirecrawlSettings,
 
   formFields: [
     {

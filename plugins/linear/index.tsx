@@ -2,7 +2,6 @@ import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { createTicketCodegenTemplate } from "./codegen/create-ticket";
 import { findIssuesCodegenTemplate } from "./codegen/find-issues";
-import { LinearSettings } from "./settings";
 import { CreateTicketConfigFields } from "./steps/create-ticket/config";
 import { FindIssuesConfigFields } from "./steps/find-issues/config";
 
@@ -15,8 +14,6 @@ const linearPlugin: IntegrationPlugin = {
     type: "image",
     value: "/integrations/linear.svg",
   },
-
-  settingsComponent: LinearSettings,
 
   formFields: [
     {
