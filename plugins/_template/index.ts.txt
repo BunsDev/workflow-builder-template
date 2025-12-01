@@ -7,12 +7,6 @@
  * Instructions:
  * 1. Replace all [PLACEHOLDERS] with your integration's values
  * 2. Run `pnpm discover-plugins` after creating your plugin
- *
- * The plugin system auto-discovers plugins and generates:
- * - plugins/index.ts (import registry)
- * - lib/types/integration.ts (IntegrationType union)
- * - lib/step-registry.ts (step function mappings)
- * - lib/codegen-registry.ts (export code templates from stepHandler functions)
  */
 
 import type { IntegrationPlugin } from "../registry";
@@ -42,7 +36,7 @@ const [integrationName]Plugin: IntegrationPlugin = {
       type: "password", // "password" | "text" | "url"
       placeholder: "[api-key-prefix]...",
       configKey: "apiKey", // Key stored in database
-      envVar: "[INTEGRATION_NAME]_API_KEY", // Environment variable for codegen
+      envVar: "[INTEGRATION_NAME]_API_KEY", // Environment variable name
       helpText: "Get your API key from ",
       helpLink: {
         text: "[integration-name].com/api-keys",
@@ -68,7 +62,6 @@ const [integrationName]Plugin: IntegrationPlugin = {
   },
 
   // Actions provided by this integration
-  // Note: codegenTemplate is auto-generated from stepHandler in step files
   actions: [
     {
       // Unique slug for this action (used in URLs and IDs)

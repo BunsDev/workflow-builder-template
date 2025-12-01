@@ -212,7 +212,7 @@ plugins/my-integration/
 - **Self-contained**: No scattered files across the codebase
 - **Auto-discovered**: Automatically detected by `pnpm discover-plugins`
 - **Declarative**: Action config fields defined as data, not React components
-- **Unified code**: Write step logic once, codegen is auto-generated
+- **Write once**: Step logic works for both the app and exported workflows
 
 ### Step-by-Step Plugin Creation
 
@@ -301,12 +301,10 @@ export async function testMyIntegration(credentials: Record<string, string>) {
 
 **File:** `plugins/my-integration/steps/send-message.ts`
 
-This runs on the server during workflow execution. Steps use the **unified step code pattern**:
+This runs on the server during workflow execution. Steps have two parts:
 
-1. `stepHandler` - Core logic that receives credentials as a parameter (portable between app and export)
-2. `sendMessageStep` - App entry point that fetches credentials and wraps with logging
-
-The `stepHandler` function is automatically extracted to generate export code, so you only write the logic once!
+1. `stepHandler` - Core logic that receives credentials as a parameter
+2. `sendMessageStep` - Entry point that fetches credentials and wraps with logging
 
 ```typescript
 import "server-only";
@@ -333,7 +331,7 @@ export type SendMessageInput = StepInput &
   };
 
 /**
- * Core logic - portable between app and export
+ * Core logic
  */
 export async function stepHandler(
   input: SendMessageCoreInput,
@@ -396,23 +394,21 @@ export async function sendMessageStep(
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
 
-// Export marker for codegen auto-generation
 export const _integrationType = "my-integration";
 ```
 
 **Key Points:**
 
 1. **`stepHandler`**: Contains the core business logic, receives credentials as a parameter
-2. **`[action]Step`**: App entry point that fetches credentials and wraps with logging
-3. **`_integrationType`**: Export marker tells the codegen generator which integration this belongs to
+2. **`[action]Step`**: Entry point that fetches credentials and wraps with logging
+3. **`_integrationType`**: Integration identifier for this step
 4. **Credentials type**: Import from `../credentials` for type safety
-5. **Auto-generated codegen**: The `stepHandler` function body is automatically extracted to generate export code
 
 #### Step 6: Create Plugin Index
 
 **File:** `plugins/my-integration/index.ts`
 
-This ties everything together. The plugin uses a **declarative approach** where action config fields are defined as data (not React components). Note that codegen templates are auto-generated from the `stepHandler` function:
+This ties everything together. The plugin uses a **declarative approach** where action config fields are defined as data (not React components):
 
 ```typescript
 import type { IntegrationPlugin } from "../registry";
@@ -458,7 +454,6 @@ const myIntegrationPlugin: IntegrationPlugin = {
   },
 
   // Actions provided by this integration
-  // Note: codegenTemplate is auto-generated from stepHandler in step files
   actions: [
     {
       slug: "send-message", // Action ID: "my-integration/send-message"
@@ -502,7 +497,6 @@ export default myIntegrationPlugin;
 4. **dependencies**: NPM packages included when exporting workflows
 5. **slug**: Action identifier (full ID becomes `my-integration/send-message`)
 6. **configFields**: Declarative array defining UI fields (not React components)
-7. **No codegenTemplate**: Codegen is auto-generated from `stepHandler` in step files
 
 **Supported configField types:**
 - `template-input`: Single-line input with `{{variable}}` support
@@ -514,11 +508,7 @@ export default myIntegrationPlugin;
 
 #### Step 7: Run Plugin Discovery
 
-The `discover-plugins` script auto-generates:
-- `plugins/index.ts` - Import registry
-- `lib/types/integration.ts` - IntegrationType union
-- `lib/step-registry.ts` - Step function mappings
-- `lib/codegen-registry.ts` - Export code templates (from `stepHandler` functions)
+The `discover-plugins` script auto-generates type definitions and registries:
 
 ```bash
 pnpm discover-plugins
@@ -550,7 +540,7 @@ Navigate to the app and:
 - [ ] **Connection Test**: Test function validates credentials correctly
 - [ ] **Workflow Execution**: Action executes successfully in a workflow
 - [ ] **Error Handling**: Invalid credentials show helpful error messages
-- [ ] **Code Generation**: Export produces valid standalone code (auto-generated from `stepHandler`)
+- [ ] **Code Generation**: Export produces valid standalone code
 - [ ] **Template Variables**: `{{NodeName.field}}` references work correctly
 - [ ] **Edge Cases**: Test with missing/invalid inputs
 
@@ -602,7 +592,6 @@ const plugin: IntegrationPlugin = {
 ### Example 3: Multiple Actions
 
 ```typescript
-// Note: codegenTemplate is auto-generated from stepHandler in step files
 actions: [
   {
     slug: "send-message",
@@ -635,9 +624,9 @@ actions: [
 
 ## Common Patterns
 
-### Pattern 1: Step Function Structure (Unified Code)
+### Pattern 1: Step Function Structure
 
-Steps follow a consistent structure with the **unified step code pattern**:
+Steps follow a consistent structure:
 
 ```typescript
 import "server-only";
@@ -660,7 +649,6 @@ export type MyInput = StepInput & MyCoreInput & {
 };
 
 // 1. stepHandler - Core logic, receives credentials as parameter
-//    This is auto-extracted for codegen!
 export async function stepHandler(
   input: MyCoreInput,
   credentials: MyIntegrationCredentials
@@ -696,7 +684,7 @@ export async function myStep(input: MyInput): Promise<MyResult> {
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
 
-// 3. Export marker for codegen auto-generation
+// 3. Integration identifier
 export const _integrationType = "my-integration";
 ```
 
@@ -775,10 +763,8 @@ If you run into issues:
    - `index.ts` - Plugin definition
    - `steps/[action].ts` - Step function(s) with `stepHandler`
    - `test.ts` - Connection test function
-2. Run `pnpm discover-plugins` to auto-generate types and codegen templates
+2. Run `pnpm discover-plugins` to register the plugin
 3. Test thoroughly
-
-**Note:** Codegen templates are auto-generated from `stepHandler` functions - no need to write them manually!
 
 Each integration is self-contained in one organized directory, making it easy to develop, test, and maintain. Happy building!
 

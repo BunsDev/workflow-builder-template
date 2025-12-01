@@ -2,11 +2,10 @@
  * STEP FUNCTION TEMPLATE
  *
  * This file contains the server-side execution logic for your action.
- * It uses the unified step code pattern:
  *
+ * Structure:
  * 1. `stepHandler` - Core logic that receives credentials as a parameter
- *    (portable between app and export)
- * 2. `[actionName]Step` - App entry point that fetches credentials and wraps with logging
+ * 2. `[actionName]Step` - Entry point that fetches credentials and wraps with logging
  *
  * TODO:
  * 1. Update the input/result types to match your action's fields
@@ -26,20 +25,20 @@ type [ActionName]Result =
   | { success: true; resultId: string }
   | { success: false; error: string };
 
-// Core input fields (without app-specific context)
+// Core input fields
 export type [ActionName]CoreInput = {
   fieldA: string;
   fieldB?: string;
 };
 
-// App input includes integrationId and step context
+// Full input includes integrationId and step context
 export type [ActionName]Input = StepInput &
   [ActionName]CoreInput & {
     integrationId?: string;
   };
 
 /**
- * Core logic - portable between app and export
+ * Core logic
  */
 export async function stepHandler(
   input: [ActionName]CoreInput,
@@ -89,7 +88,7 @@ export async function stepHandler(
 }
 
 /**
- * App entry point - fetches credentials and wraps with logging
+ * Step entry point
  */
 export async function [actionName]Step(
   input: [ActionName]Input
@@ -103,5 +102,4 @@ export async function [actionName]Step(
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
 
-// Export marker for codegen auto-generation
 export const _integrationType = "[integration-type]";
