@@ -333,7 +333,7 @@ export type SendMessageInput = StepInput &
 /**
  * Core logic
  */
-export async function stepHandler(
+async function stepHandler(
   input: SendMessageCoreInput,
   credentials: MyIntegrationCredentials
 ): Promise<SendMessageResult> {
@@ -649,7 +649,7 @@ export type MyInput = StepInput & MyCoreInput & {
 };
 
 // 1. stepHandler - Core logic, receives credentials as parameter
-export async function stepHandler(
+async function stepHandler(
   input: MyCoreInput,
   credentials: MyIntegrationCredentials
 ): Promise<MyResult> {
