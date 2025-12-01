@@ -7,7 +7,7 @@
  * Contains auto-generated codegen templates for steps that export stepHandler.
  * These templates are used when exporting workflows to standalone projects.
  *
- * Generated templates: 7
+ * Generated templates: 9
  */
 
 /**
@@ -468,6 +468,105 @@ export async function sendEmailStep(
     return {
       success: false,
       error: \`Failed to send email: \${message}\`,
+    };
+  }
+}
+`,
+
+  "v0/create-chat": `import { createClient, type ChatsCreateResponse } from "v0-sdk";
+import { fetchCredentials } from "./lib/credential-helper";
+
+type CreateChatResult =
+  | { success: true; chatId: string; url: string; demoUrl?: string }
+  | { success: false; error: string };
+
+export type CreateChatCoreInput = {
+  message: string;
+  system?: string;
+};
+
+export async function createChatStep(
+  input: CreateChatCoreInput,
+): Promise<CreateChatResult> {
+  "use step";
+  const credentials = await fetchCredentials("v0");
+  const apiKey = credentials.V0_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "V0_API_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  try {
+    const client = createClient({ apiKey });
+
+    const result = (await client.chats.create({
+      message: input.message,
+      system: input.system,
+    })) as ChatsCreateResponse;
+
+    return {
+      success: true,
+      chatId: result.id,
+      url: result.webUrl,
+      demoUrl: result.latestVersion?.demoUrl,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: \`Failed to create chat: \${getErrorMessage(error)}\`,
+    };
+  }
+}
+`,
+
+  "v0/send-message": `import { createClient, type ChatsSendMessageResponse } from "v0-sdk";
+import { fetchCredentials } from "./lib/credential-helper";
+
+type SendMessageResult =
+  | { success: true; chatId: string; demoUrl?: string }
+  | { success: false; error: string };
+
+export type SendMessageCoreInput = {
+  chatId: string;
+  message: string;
+};
+
+export async function sendMessageStep(
+  input: SendMessageCoreInput,
+): Promise<SendMessageResult> {
+  "use step";
+  const credentials = await fetchCredentials("v0");
+  const apiKey = credentials.V0_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "V0_API_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  try {
+    const client = createClient({ apiKey });
+
+    const result = (await client.chats.sendMessage({
+      chatId: input.chatId,
+      message: input.message,
+    })) as ChatsSendMessageResponse;
+
+    return {
+      success: true,
+      chatId: result.id,
+      demoUrl: result.latestVersion?.demoUrl,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: \`Failed to send message: \${getErrorMessage(error)}\`,
     };
   }
 }
