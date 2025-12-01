@@ -24,7 +24,7 @@ export type FirecrawlSearchInput = StepInput &
   };
 
 /**
- * Core logic - portable between app and export
+ * Core logic
  */
 async function stepHandler(
   input: FirecrawlSearchCoreInput,

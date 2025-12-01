@@ -19,6 +19,11 @@ export const AUTO_GENERATED_TEMPLATES: Record<string, string> = {
 import { z } from "zod";
 import { fetchCredentials } from "./lib/credential-helper";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 type GenerateTextResult =
   | { success: true; text: string }
   | { success: true; object: Record<string, unknown> }
@@ -96,6 +101,11 @@ export async function generateTextStep(
 import { createGateway, experimental_generateImage as generateImage } from "ai";
 import { fetchCredentials } from "./lib/credential-helper";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 type GenerateImageResult =
   | { success: true; base64: string }
   | { success: false; error: string };
@@ -156,6 +166,11 @@ export async function generateImageStep(
   "firecrawl/scrape": `import FirecrawlApp from "@mendable/firecrawl-js";
 import { fetchCredentials } from "./lib/credential-helper";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 type ScrapeResult = {
   markdown?: string;
   metadata?: Record<string, unknown>;
@@ -195,6 +210,11 @@ export async function firecrawlScrapeStep(
 
   "firecrawl/search": `import FirecrawlApp from "@mendable/firecrawl-js";
 import { fetchCredentials } from "./lib/credential-helper";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
 
 type SearchResult = {
   web?: unknown[];
@@ -237,6 +257,11 @@ export async function firecrawlSearchStep(
 
   "linear/create-ticket": `import { LinearClient } from "@linear/sdk";
 import { fetchCredentials } from "./lib/credential-helper";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
 
 type CreateTicketResult =
   | { success: true; id: string; url: string; title: string }
@@ -311,6 +336,11 @@ export async function createTicketStep(
 
   "linear/find-issues": `import { LinearClient } from "@linear/sdk";
 import { fetchCredentials } from "./lib/credential-helper";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
 
 type FindIssuesResult =
   | { success: true; issues: LinearIssue[]; count: number }
@@ -391,6 +421,11 @@ export async function findIssuesStep(
 
   "resend/send-email": `import { Resend } from "resend";
 import { fetchCredentials } from "./lib/credential-helper";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
 
 type SendEmailResult =
   | { success: true; id: string }
@@ -476,6 +511,11 @@ export async function sendEmailStep(
   "slack/send-message": `import { WebClient } from "@slack/web-api";
 import { fetchCredentials } from "./lib/credential-helper";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 type SendSlackMessageResult =
   | { success: true; ts: string; channel: string }
   | { success: false; error: string };
@@ -532,6 +572,11 @@ export async function sendSlackMessageStep(
   "v0/create-chat": `import { createClient, type ChatsCreateResponse } from "v0-sdk";
 import { fetchCredentials } from "./lib/credential-helper";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 type CreateChatResult =
   | { success: true; chatId: string; url: string; demoUrl?: string }
   | { success: false; error: string };
@@ -581,6 +626,11 @@ export async function createChatStep(
 
   "v0/send-message": `import { createClient, type ChatsSendMessageResponse } from "v0-sdk";
 import { fetchCredentials } from "./lib/credential-helper";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
 
 type SendMessageResult =
   | { success: true; chatId: string; demoUrl?: string }
