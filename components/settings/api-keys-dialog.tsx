@@ -54,10 +54,11 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
     setLoading(true);
     try {
       const response = await fetch("/api/api-keys");
-      if (response.ok) {
-        const keys = await response.json();
-        setApiKeys(keys);
+      if (!response.ok) {
+        throw new Error("Failed to load API keys");
       }
+      const keys = await response.json();
+      setApiKeys(keys);
     } catch (error) {
       console.error("Failed to load API keys:", error);
       toast.error("Failed to load API keys");
