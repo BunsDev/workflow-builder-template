@@ -7,7 +7,7 @@
  * This registry enables dynamic step imports that are statically analyzable
  * by the bundler. Each action type maps to its step importer function.
  *
- * Generated entries: 12
+ * Generated entries: 14
  */
 
 import "server-only";
@@ -45,11 +45,19 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/ai-gateway/steps/generate-image"),
     stepFunction: "generateImageStep",
   },
+  "blob/put": {
+    importer: () => import("@/plugins/blob/steps/put"),
+    stepFunction: "putBlobStep",
+  },
+  "blob/list": {
+    importer: () => import("@/plugins/blob/steps/list"),
+    stepFunction: "listBlobsStep",
+  },
   "firecrawl/scrape": {
     importer: () => import("@/plugins/firecrawl/steps/scrape"),
     stepFunction: "firecrawlScrapeStep",
   },
-  Scrape: {
+  "Scrape": {
     importer: () => import("@/plugins/firecrawl/steps/scrape"),
     stepFunction: "firecrawlScrapeStep",
   },
@@ -57,7 +65,7 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/firecrawl/steps/search"),
     stepFunction: "firecrawlSearchStep",
   },
-  Search: {
+  "Search": {
     importer: () => import("@/plugins/firecrawl/steps/search"),
     stepFunction: "firecrawlSearchStep",
   },
@@ -126,6 +134,8 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
 export const ACTION_LABELS: Record<string, string> = {
   "ai-gateway/generate-text": "Generate Text",
   "ai-gateway/generate-image": "Generate Image",
+  "blob/put": "Put Blob",
+  "blob/list": "List Blobs",
   "firecrawl/scrape": "Scrape URL",
   "firecrawl/search": "Search Web",
   "linear/create-ticket": "Create Ticket",
@@ -136,8 +146,8 @@ export const ACTION_LABELS: Record<string, string> = {
   "superagent/redact": "Redact",
   "v0/create-chat": "Create Chat",
   "v0/send-message": "Send Message",
-  Scrape: "Scrape URL",
-  Search: "Search Web",
+  "Scrape": "Scrape URL",
+  "Search": "Search Web",
   "Generate Text": "Generate Text",
   "Generate Image": "Generate Image",
   "Send Email": "Send Email",
