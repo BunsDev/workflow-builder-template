@@ -24,6 +24,7 @@ import "./linear";
 import "./perplexity";
 import "./resend";
 import "./slack";
+import "./stripe";
 import "./superagent";
 import "./v0";
 
