@@ -39,7 +39,7 @@ export async function generateMetadata({
     // Ignore errors, use defaults
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://workflow.new";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://workflow-builder.dev";
   const ogImageUrl = isPublic
     ? `${baseUrl}/api/og/workflow/${workflowId}`
     : `${baseUrl}/og-default.png`;
