@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { api } from "@/lib/api-client";
 import {
   integrationsAtom,
+  integrationsLoadedAtom,
   integrationsVersionAtom,
 } from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
@@ -30,7 +31,6 @@ import {
   nodesAtom,
   rightPanelWidthAtom,
   selectedExecutionIdAtom,
-  selectedNodeAtom,
   triggerExecuteAtom,
   updateNodeDataAtom,
   type WorkflowNode,
@@ -117,7 +117,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const setCurrentWorkflowId = useSetAtom(currentWorkflowIdAtom);
   const setCurrentWorkflowName = useSetAtom(currentWorkflowNameAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
-  const setSelectedNodeId = useSetAtom(selectedNodeAtom);
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
   const [workflowNotFound, setWorkflowNotFound] = useAtom(workflowNotFoundAtom);
   const setTriggerExecute = useSetAtom(triggerExecuteAtom);
@@ -132,6 +131,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   );
   const setIsWorkflowOwner = useSetAtom(isWorkflowOwnerAtom);
   const setGlobalIntegrations = useSetAtom(integrationsAtom);
+  const setIntegrationsLoaded = useSetAtom(integrationsLoadedAtom);
   const integrationsVersion = useAtomValue(integrationsVersionAtom);
 
   // Panel width state for resizing
@@ -303,16 +303,13 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       try {
         const workflowData = await api.ai.generate(prompt);
 
-        setNodes(workflowData.nodes || []);
+        // Clear selection on all nodes
+        const nodesWithoutSelection = (workflowData.nodes || []).map(
+          (node: WorkflowNode) => ({ ...node, selected: false })
+        );
+        setNodes(nodesWithoutSelection);
         setEdges(workflowData.edges || []);
         setCurrentWorkflowName(workflowData.name || "AI Generated Workflow");
-
-        const selectedNode = workflowData.nodes?.find(
-          (n: { selected?: boolean }) => n.selected
-        );
-        if (selectedNode) {
-          setSelectedNodeId(selectedNode.id);
-        }
 
         await api.workflow.update(workflowId, {
           name: workflowData.name,
@@ -334,7 +331,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       setCurrentWorkflowName,
       setNodes,
       setEdges,
-      setSelectedNodeId,
     ]
   );
 
@@ -348,9 +344,10 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
         return;
       }
 
-      // Reset all node statuses to idle when loading from database
+      // Reset node statuses to idle and clear selection when loading from database
       const nodesWithIdleStatus = workflow.nodes.map((node: WorkflowNode) => ({
         ...node,
+        selected: false,
         data: {
           ...node.data,
           status: "idle" as const,
@@ -367,11 +364,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       setIsWorkflowOwner(workflow.isOwner !== false); // Default to true if not set
       setHasUnsavedChanges(false);
       setWorkflowNotFound(false);
-
-      const selectedNode = workflow.nodes.find((n: WorkflowNode) => n.selected);
-      if (selectedNode) {
-        setSelectedNodeId(selectedNode.id);
-      }
     } catch (error) {
       console.error("Failed to load workflow:", error);
       toast.error("Failed to load workflow");
@@ -386,7 +378,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     setIsWorkflowOwner,
     setHasUnsavedChanges,
     setWorkflowNotFound,
-    setSelectedNodeId,
   ]);
 
   // Track if we've already auto-fixed integrations for this workflow+version
@@ -450,6 +441,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       try {
         const allIntegrations = await api.integration.getAll();
         setGlobalIntegrations(allIntegrations);
+        setIntegrationsLoaded(true);
 
         const validIds = new Set(allIntegrations.map((i) => i.id));
         const fixes = nodes
@@ -490,6 +482,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     integrationsVersion,
     updateNodeData,
     setGlobalIntegrations,
+    setIntegrationsLoaded,
     setHasUnsavedChanges,
   ]);
 

@@ -57,7 +57,10 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { api } from "@/lib/api-client";
 import { authClient, useSession } from "@/lib/auth-client";
-import { integrationsAtom } from "@/lib/integrations-store";
+import {
+  integrationsAtom,
+  integrationsVersionAtom,
+} from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import {
   addNodeAtom,
@@ -98,7 +101,7 @@ import {
 import { Panel } from "../ai-elements/panel";
 import { DeployButton } from "../deploy-button";
 import { GitHubStarsButton } from "../github-stars-button";
-import { IntegrationsDialog } from "../settings/integrations-dialog";
+import { IntegrationFormDialog } from "../settings/integration-form-dialog";
 import { IntegrationIcon } from "../ui/integration-icon";
 import { WorkflowIcon } from "../ui/workflow-icon";
 import { UserMenu } from "../workflows/user-menu";
@@ -1552,7 +1555,9 @@ function WorkflowIssuesDialog({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
-  const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
+  const [addingIntegrationType, setAddingIntegrationType] =
+    useState<IntegrationType | null>(null);
+  const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
   const { brokenReferences, missingRequiredFields, missingIntegrations } =
     actions.workflowIssues;
 
@@ -1562,9 +1567,9 @@ function WorkflowIssuesDialog({
     state.setActiveTab("properties");
   };
 
-  const handleAddIntegrations = () => {
+  const handleAddIntegration = (integrationType: IntegrationType) => {
     actions.setShowWorkflowIssuesDialog(false);
-    setShowIntegrationsDialog(true);
+    setAddingIntegrationType(integrationType);
   };
 
   const totalIssues =
@@ -1712,7 +1717,9 @@ function WorkflowIssuesDialog({
                       </div>
                       <Button
                         className="shrink-0"
-                        onClick={handleAddIntegrations}
+                        onClick={() =>
+                          handleAddIntegration(missing.integrationType)
+                        }
                         size="sm"
                         variant="outline"
                       >
@@ -1734,9 +1741,16 @@ function WorkflowIssuesDialog({
         </AlertDialogContent>
       </AlertDialog>
 
-      <IntegrationsDialog
-        onOpenChange={setShowIntegrationsDialog}
-        open={showIntegrationsDialog}
+      <IntegrationFormDialog
+        mode="create"
+        onClose={() => setAddingIntegrationType(null)}
+        onSuccess={() => {
+          setAddingIntegrationType(null);
+          // Increment version to trigger auto-fix for nodes
+          setIntegrationsVersion((v) => v + 1);
+        }}
+        open={addingIntegrationType !== null}
+        preselectedType={addingIntegrationType ?? undefined}
       />
     </>
   );

@@ -51,7 +51,7 @@ export function IntegrationSelector({
       setGlobalIntegrations(all);
       const filtered = all.filter((i) => i.type === integrationType);
       setIntegrations(filtered);
-
+      
       // Auto-select if only one option and nothing selected yet
       if (filtered.length === 1 && !value) {
         onChange(filtered[0].id);

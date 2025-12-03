@@ -20,7 +20,10 @@ import {
   NodeTitle,
 } from "@/components/ai-elements/node";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { integrationIdsAtom } from "@/lib/integrations-store";
+import {
+  integrationIdsAtom,
+  integrationsLoadedAtom,
+} from "@/lib/integrations-store";
 import { cn } from "@/lib/utils";
 import {
   executionLogsAtom,
@@ -243,6 +246,7 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
   const executionLogs = useAtomValue(executionLogsAtom);
   const pendingIntegrationNodes = useAtomValue(pendingIntegrationNodesAtom);
   const availableIntegrationIds = useAtomValue(integrationIdsAtom);
+  const integrationsLoaded = useAtomValue(integrationsLoadedAtom);
 
   if (!data) {
     return null;
@@ -308,8 +312,12 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
   const hasValidIntegration =
     configuredIntegrationId &&
     availableIntegrationIds.has(configuredIntegrationId);
+  // Only show missing indicator after integrations have been loaded
   const integrationMissing =
-    needsIntegration && !hasValidIntegration && !isPendingIntegrationCheck;
+    integrationsLoaded &&
+    needsIntegration &&
+    !hasValidIntegration &&
+    !isPendingIntegrationCheck;
 
   // Get model for AI nodes
   const getAiModel = (): string | null => {

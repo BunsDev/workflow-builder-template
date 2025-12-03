@@ -46,6 +46,8 @@ export function IntegrationsDialog({
       loadAll();
       // Reset changes tracking when dialog opens
       hasChangesRef.current = false;
+      // Reset create dialog state when opening
+      setShowCreateDialog(false);
     }
   }, [open, loadAll]);
 
