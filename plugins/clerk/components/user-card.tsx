@@ -1,32 +1,31 @@
 import type { ResultComponentProps } from "@/plugins/registry";
 
-type ClerkUserOutput = {
-  success: boolean;
-  data?: {
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    primaryEmailAddress: string | null;
-    createdAt: number;
-  };
-  error?: { message: string };
+// The logging layer unwraps standardized outputs, so we receive just the data
+type ClerkUserData = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  primaryEmailAddress: string | null;
+  createdAt: number;
 };
 
 export function UserCard({ output }: ResultComponentProps) {
-  const result = output as ClerkUserOutput;
+  const data = output as ClerkUserData;
 
-  if (!result.success || !result.data) {
+  // Validate we have the expected data shape
+  if (!data || typeof data !== "object" || !("id" in data)) {
     return null;
   }
 
-  const { data } = result;
   const initials = [data.firstName?.[0], data.lastName?.[0]]
     .filter(Boolean)
     .join("")
     .toUpperCase();
 
   const fullName = [data.firstName, data.lastName].filter(Boolean).join(" ");
-  const createdDate = new Date(data.createdAt).toLocaleDateString();
+  const createdDate = data.createdAt
+    ? new Date(data.createdAt).toLocaleDateString()
+    : "Unknown";
 
   return (
     <div className="flex items-center gap-4">
