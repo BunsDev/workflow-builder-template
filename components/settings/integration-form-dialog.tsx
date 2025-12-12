@@ -1,8 +1,28 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  Pencil,
+  Search,
+  Trash2,
+  X,
+  XCircle,
+  Zap,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +38,6 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { api, type Integration } from "@/lib/api-client";
 import type { IntegrationType } from "@/lib/types/integration";
-import { cn } from "@/lib/utils";
 import {
   getIntegration,
   getIntegrationLabels,
@@ -29,6 +48,7 @@ type IntegrationFormDialogProps = {
   open: boolean;
   onClose: () => void;
   onSuccess?: (integrationId: string) => void;
+  onDelete?: () => void;
   integration?: Integration | null;
   mode: "create" | "edit";
   preselectedType?: IntegrationType;
@@ -56,27 +76,400 @@ const getIntegrationTypes = (): IntegrationType[] => [
 const getLabel = (type: IntegrationType): string =>
   getIntegrationLabels()[type] || SYSTEM_INTEGRATION_LABELS[type] || type;
 
+function SecretField({
+  fieldId,
+  label,
+  configKey,
+  placeholder,
+  helpText,
+  helpLink,
+  value,
+  onChange,
+  isEditMode,
+}: {
+  fieldId: string;
+  label: string;
+  configKey: string;
+  placeholder?: string;
+  helpText?: string;
+  helpLink?: { url: string; text: string };
+  value: string;
+  onChange: (key: string, value: string) => void;
+  isEditMode: boolean;
+}) {
+  const [isEditing, setIsEditing] = useState(!isEditMode);
+  const hasNewValue = value.length > 0;
+
+  // In edit mode, start with "configured" state
+  // User can click to change, or clear after entering a new value
+  if (isEditMode && !isEditing && !hasNewValue) {
+    return (
+      <div className="space-y-2">
+        <Label htmlFor={fieldId}>{label}</Label>
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 flex-1 items-center gap-2 rounded-md border bg-muted/30 px-3">
+            <Check className="size-4 text-green-600" />
+            <span className="text-muted-foreground text-sm">Configured</span>
+          </div>
+          <Button
+            onClick={() => setIsEditing(true)}
+            type="button"
+            variant="outline"
+          >
+            <Pencil className="mr-1.5 size-3" />
+            Change
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={fieldId}>{label}</Label>
+      <div className="flex items-center gap-2">
+        <Input
+          autoFocus={isEditMode && isEditing}
+          className="flex-1"
+          id={fieldId}
+          onChange={(e) => onChange(configKey, e.target.value)}
+          placeholder={placeholder}
+          type="password"
+          value={value}
+        />
+        {isEditMode && (isEditing || hasNewValue) && (
+          <Button
+            onClick={() => {
+              onChange(configKey, "");
+              setIsEditing(false);
+            }}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <X className="size-4" />
+          </Button>
+        )}
+      </div>
+      {(helpText || helpLink) && (
+        <p className="text-muted-foreground text-xs">
+          {helpText}
+          {helpLink && (
+            <a
+              className="underline hover:text-foreground"
+              href={helpLink.url}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {helpLink.text}
+            </a>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ConfigFields({
+  formData,
+  updateConfig,
+  isEditMode,
+}: {
+  formData: IntegrationFormData;
+  updateConfig: (key: string, value: string) => void;
+  isEditMode: boolean;
+}) {
+  if (!formData.type) {
+    return null;
+  }
+
+  // Handle system integrations with hardcoded fields
+  if (formData.type === "database") {
+    return (
+      <SecretField
+        configKey="url"
+        fieldId="url"
+        helpText="Connection string in the format: postgresql://user:password@host:port/database"
+        isEditMode={isEditMode}
+        label="Database URL"
+        onChange={updateConfig}
+        placeholder="postgresql://user:password@host:port/database"
+        value={formData.config.url || ""}
+      />
+    );
+  }
+
+  // Get plugin form fields from registry
+  const plugin = getIntegration(formData.type);
+  if (!plugin?.formFields) {
+    return null;
+  }
+
+  return plugin.formFields.map((field) => {
+    const isSecretField = field.type === "password";
+
+    if (isSecretField) {
+      return (
+        <SecretField
+          configKey={field.configKey}
+          fieldId={field.id}
+          helpLink={field.helpLink}
+          helpText={field.helpText}
+          isEditMode={isEditMode}
+          key={field.id}
+          label={field.label}
+          onChange={updateConfig}
+          placeholder={field.placeholder}
+          value={formData.config[field.configKey] || ""}
+        />
+      );
+    }
+
+    return (
+      <div className="space-y-2" key={field.id}>
+        <Label htmlFor={field.id}>{field.label}</Label>
+        <Input
+          id={field.id}
+          onChange={(e) => updateConfig(field.configKey, e.target.value)}
+          placeholder={field.placeholder}
+          type={field.type}
+          value={formData.config[field.configKey] || ""}
+        />
+        {(field.helpText || field.helpLink) && (
+          <p className="text-muted-foreground text-xs">
+            {field.helpText}
+            {field.helpLink && (
+              <a
+                className="underline hover:text-foreground"
+                href={field.helpLink.url}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {field.helpLink.text}
+              </a>
+            )}
+          </p>
+        )}
+      </div>
+    );
+  });
+}
+
+function FormFooterActions({
+  step,
+  mode,
+  preselectedType,
+  saving,
+  deleting,
+  testing,
+  testResult,
+  onBack,
+  onDelete,
+  onTestConnection,
+  onClose,
+}: {
+  step: "select" | "configure";
+  mode: "create" | "edit";
+  preselectedType?: IntegrationType;
+  saving: boolean;
+  deleting: boolean;
+  testing: boolean;
+  testResult: { status: "success" | "error"; message: string } | null;
+  onBack: () => void;
+  onDelete: () => void;
+  onTestConnection: () => void;
+  onClose: () => void;
+}) {
+  if (step === "select") {
+    return (
+      <Button onClick={onClose} variant="outline">
+        Cancel
+      </Button>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex gap-2">
+        {mode === "create" && !preselectedType && (
+          <Button disabled={saving} onClick={onBack} variant="ghost">
+            <ArrowLeft className="mr-2 size-4" />
+            Back
+          </Button>
+        )}
+        {mode === "edit" && (
+          <Button
+            disabled={saving || deleting || testing}
+            onClick={onDelete}
+            variant="ghost"
+          >
+            <Trash2 className="mr-2 size-4" />
+            Delete
+          </Button>
+        )}
+        <Button
+          disabled={saving || deleting || testing}
+          onClick={onTestConnection}
+          variant="ghost"
+        >
+          <TestConnectionIcon testing={testing} testResult={testResult} />
+          Test Connection
+        </Button>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          disabled={saving || deleting || testing}
+          onClick={onClose}
+          type="button"
+          variant="outline"
+        >
+          Cancel
+        </Button>
+        <Button
+          disabled={saving || deleting || testing}
+          form="integration-form"
+          type="submit"
+        >
+          {saving ? <Spinner className="mr-2 size-4" /> : null}
+          {mode === "edit" ? "Update" : "Create"}
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function TestConnectionIcon({
+  testing,
+  testResult,
+}: {
+  testing: boolean;
+  testResult: { status: "success" | "error"; message: string } | null;
+}) {
+  if (testing) {
+    return <Spinner className="mr-2 size-4" />;
+  }
+  if (testResult?.status === "success") {
+    return <CheckCircle2 className="mr-2 size-4 text-green-600" />;
+  }
+  if (testResult?.status === "error") {
+    return <XCircle className="mr-2 size-4 text-red-600" />;
+  }
+  return <Zap className="mr-2 size-4" />;
+}
+
+function DeleteConfirmDialog({
+  open,
+  onOpenChange,
+  deleting,
+  onDelete,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  deleting: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <AlertDialog onOpenChange={onOpenChange} open={open}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Connection</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this connection? Workflows using it
+            will fail until a new one is configured.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction disabled={deleting} onClick={onDelete}>
+            {deleting ? <Spinner className="mr-2 size-4" /> : null}
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function TypeSelector({
+  searchQuery,
+  onSearchChange,
+  filteredTypes,
+  onSelectType,
+}: {
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  filteredTypes: IntegrationType[];
+  onSelectType: (type: IntegrationType) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
+        <Input
+          autoFocus
+          className="pl-9"
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search services..."
+          value={searchQuery}
+        />
+      </div>
+      <div className="max-h-[300px] space-y-1 overflow-y-auto">
+        {filteredTypes.length === 0 ? (
+          <p className="py-4 text-center text-muted-foreground text-sm">
+            No services found
+          </p>
+        ) : (
+          filteredTypes.map((type) => (
+            <button
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50"
+              key={type}
+              onClick={() => onSelectType(type)}
+              type="button"
+            >
+              <IntegrationIcon
+                className="size-5"
+                integration={type === "ai-gateway" ? "vercel" : type}
+              />
+              <span className="font-medium">{getLabel(type)}</span>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function IntegrationFormDialog({
   open,
   onClose,
   onSuccess,
+  onDelete,
   integration,
   mode,
   preselectedType,
 }: IntegrationFormDialogProps) {
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    status: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState<IntegrationFormData>({
     name: "",
     type: preselectedType || null,
     config: {},
   });
 
-  // Step: "select" for type selection grid, "configure" for form
+  // Step: "select" for type selection list, "configure" for form
   const [step, setStep] = useState<"select" | "configure">(
     preselectedType || mode === "edit" ? "configure" : "select"
   );
 
   useEffect(() => {
+    setTestResult(null);
     if (integration) {
       setFormData({
         name: integration.name,
@@ -105,6 +498,7 @@ export function IntegrationFormDialog({
 
   const handleBack = () => {
     setStep("select");
+    setSearchQuery("");
     setFormData({
       name: "",
       type: null,
@@ -120,16 +514,18 @@ export function IntegrationFormDialog({
     try {
       setSaving(true);
 
-      // Generate a default name if none provided
-      const integrationName =
-        formData.name.trim() || `${getLabel(formData.type)} Integration`;
+      const integrationName = formData.name.trim();
 
       if (mode === "edit" && integration) {
+        // Only include config if there are actual new values entered
+        const hasNewConfig = Object.values(formData.config).some(
+          (v) => v && v.length > 0
+        );
         await api.integration.update(integration.id, {
           name: integrationName,
-          config: formData.config,
+          ...(hasNewConfig ? { config: formData.config } : {}),
         });
-        toast.success("Integration updated");
+        toast.success("Connection updated");
         onSuccess?.(integration.id);
       } else {
         const newIntegration = await api.integration.create({
@@ -148,6 +544,68 @@ export function IntegrationFormDialog({
     }
   };
 
+  const handleDelete = async () => {
+    if (!integration) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await api.integration.delete(integration.id);
+      toast.success("Connection deleted");
+      onDelete?.();
+      onClose();
+    } catch (error) {
+      console.error("Failed to delete integration:", error);
+      toast.error("Failed to delete connection");
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!formData.type) {
+      return;
+    }
+
+    // Check if we have any config values to test
+    const hasConfig = Object.values(formData.config).some(
+      (v) => v && v.length > 0
+    );
+    if (!hasConfig && mode === "create") {
+      toast.error("Please enter credentials first");
+      return;
+    }
+
+    try {
+      setTesting(true);
+      setTestResult(null);
+
+      let result: { status: "success" | "error"; message: string };
+
+      if (mode === "edit" && integration && !hasConfig) {
+        // Test existing integration (no new config entered)
+        result = await api.integration.testConnection(integration.id);
+      } else {
+        // Test with new credentials
+        result = await api.integration.testCredentials({
+          type: formData.type,
+          config: formData.config,
+        });
+      }
+
+      setTestResult(result);
+    } catch (error) {
+      console.error("Failed to test connection:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to test connection";
+      setTestResult({ status: "error", message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const updateConfig = (key: string, value: string) => {
     setFormData({
       ...formData,
@@ -155,171 +613,107 @@ export function IntegrationFormDialog({
     });
   };
 
-  const renderConfigFields = () => {
-    if (!formData.type) {
-      return null;
-    }
-
-    // Handle system integrations with hardcoded fields
-    if (formData.type === "database") {
-      return (
-        <div className="space-y-2">
-          <Label htmlFor="url">Database URL</Label>
-          <Input
-            id="url"
-            onChange={(e) => updateConfig("url", e.target.value)}
-            placeholder="postgresql://..."
-            type="password"
-            value={formData.config.url || ""}
-          />
-          <p className="text-muted-foreground text-xs">
-            Connection string in the format:
-            postgresql://user:password@host:port/database
-          </p>
-        </div>
-      );
-    }
-
-    // Get plugin form fields from registry
-    const plugin = getIntegration(formData.type);
-    if (!plugin?.formFields) {
-      return null;
-    }
-
-    return plugin.formFields.map((field) => (
-      <div className="space-y-2" key={field.id}>
-        <Label htmlFor={field.id}>{field.label}</Label>
-        <Input
-          id={field.id}
-          onChange={(e) => updateConfig(field.configKey, e.target.value)}
-          placeholder={field.placeholder}
-          type={field.type}
-          value={formData.config[field.configKey] || ""}
-        />
-        {(field.helpText || field.helpLink) && (
-          <p className="text-muted-foreground text-xs">
-            {field.helpText}
-            {field.helpLink && (
-              <a
-                className="underline hover:text-foreground"
-                href={field.helpLink.url}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                {field.helpLink.text}
-              </a>
-            )}
-          </p>
-        )}
-      </div>
-    ));
-  };
-
   const integrationTypes = getIntegrationTypes();
+
+  const filteredIntegrationTypes = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return integrationTypes;
+    }
+    const query = searchQuery.toLowerCase();
+    return integrationTypes.filter((type) =>
+      getLabel(type).toLowerCase().includes(query)
+    );
+  }, [integrationTypes, searchQuery]);
 
   const getDialogTitle = () => {
     if (mode === "edit") {
-      return "Edit Integration";
+      return "Edit Connection";
     }
     if (step === "select") {
-      return "Choose Integration";
+      return "Add Connection";
     }
-    return `Add ${formData.type ? getLabel(formData.type) : ""} Integration`;
+    return `Add ${formData.type ? getLabel(formData.type) : ""} Connection`;
   };
 
   const getDialogDescription = () => {
     if (mode === "edit") {
-      return "Update integration configuration";
+      return "Update your connection credentials";
     }
     if (step === "select") {
-      return "Select an integration type to configure";
+      return "Select a service to connect";
     }
-    return "Configure your integration";
+    return "Enter your credentials";
   };
 
   return (
     <Dialog onOpenChange={(isOpen) => !isOpen && onClose()} open={open}>
-      <DialogContent
-        className={cn(step === "select" ? "max-w-2xl" : "max-w-md")}
-      >
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{getDialogTitle()}</DialogTitle>
           <DialogDescription>{getDialogDescription()}</DialogDescription>
         </DialogHeader>
 
         {step === "select" ? (
-          <div className="grid grid-cols-3 gap-2 py-2">
-            {integrationTypes.map((type) => (
-              <button
-                className="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-colors hover:bg-muted/50"
-                key={type}
-                onClick={() => handleSelectType(type)}
-                type="button"
-              >
-                <IntegrationIcon
-                  className="size-8"
-                  integration={type === "ai-gateway" ? "vercel" : type}
-                />
-                <span className="text-center font-medium">
-                  {getLabel(type)}
-                </span>
-              </button>
-            ))}
-          </div>
+          <TypeSelector
+            filteredTypes={filteredIntegrationTypes}
+            onSearchChange={setSearchQuery}
+            onSelectType={handleSelectType}
+            searchQuery={searchQuery}
+          />
         ) : (
-          <div className="space-y-4">
-            {renderConfigFields()}
+          <form
+            className="space-y-4"
+            id="integration-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSave();
+            }}
+          >
+            <ConfigFields
+              formData={formData}
+              isEditMode={mode === "edit"}
+              updateConfig={updateConfig}
+            />
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name (Optional)</Label>
+              <Label htmlFor="name">Label (Optional)</Label>
               <Input
                 id="name"
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder={
-                  formData.type
-                    ? `${getLabel(formData.type)} Integration`
-                    : "Integration"
-                }
+                placeholder="e.g. Production, Personal, Work"
                 value={formData.name}
               />
             </div>
-          </div>
+          </form>
         )}
 
         <DialogFooter
-          className={cn(
-            step === "select" ? "sm:justify-start" : "sm:justify-between"
-          )}
+          className={step === "configure" ? "sm:justify-between" : ""}
         >
-          {step === "configure" && mode === "create" && !preselectedType && (
-            <Button disabled={saving} onClick={handleBack} variant="ghost">
-              <ArrowLeft className="mr-2 size-4" />
-              Back
-            </Button>
-          )}
-          {step === "select" ? (
-            <Button onClick={() => onClose()} variant="outline">
-              Cancel
-            </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button
-                disabled={saving}
-                onClick={() => onClose()}
-                variant="outline"
-              >
-                Cancel
-              </Button>
-              <Button disabled={saving} onClick={handleSave}>
-                {saving ? <Spinner className="mr-2 size-4" /> : null}
-                {mode === "edit" ? "Update" : "Create"}
-              </Button>
-            </div>
-          )}
+          <FormFooterActions
+            deleting={deleting}
+            mode={mode}
+            onBack={handleBack}
+            onClose={onClose}
+            onDelete={() => setShowDeleteConfirm(true)}
+            onTestConnection={handleTestConnection}
+            preselectedType={preselectedType}
+            saving={saving}
+            step={step}
+            testing={testing}
+            testResult={testResult}
+          />
         </DialogFooter>
       </DialogContent>
+
+      <DeleteConfirmDialog
+        deleting={deleting}
+        onDelete={handleDelete}
+        onOpenChange={setShowDeleteConfirm}
+        open={showDeleteConfirm}
+      />
     </Dialog>
   );
 }
