@@ -1,8 +1,8 @@
 "use client";
 
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { AlertTriangle, Check, Circle, Pencil, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api, type Integration } from "@/lib/api-client";
 import {
@@ -30,51 +30,68 @@ export function IntegrationSelector({
   disabled,
   onAddConnection,
 }: IntegrationSelectorProps) {
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [editingIntegration, setEditingIntegration] =
     useState<Integration | null>(null);
-  const integrationsVersion = useAtomValue(integrationsVersionAtom);
-  const setGlobalIntegrations = useSetAtom(integrationsAtom);
+  const [globalIntegrations, setGlobalIntegrations] = useAtom(integrationsAtom);
+  const integrationsVersion = useRef(0);
   const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
+  const [hasFetched, setHasFetched] = useState(false);
 
-  const loadIntegrations = async () => {
+  // Filter integrations from global cache
+  const integrations = useMemo(
+    () => globalIntegrations.filter((i) => i.type === integrationType),
+    [globalIntegrations, integrationType]
+  );
+
+  // Check if we have cached data
+  const hasCachedData = globalIntegrations.length > 0;
+
+  const loadIntegrations = async (isBackground = false) => {
     try {
-      setLoading(true);
       const all = await api.integration.getAll();
       // Update global store so other components can access it
       setGlobalIntegrations(all);
       const filtered = all.filter((i) => i.type === integrationType);
-      setIntegrations(filtered);
 
       // Auto-select if only one option and nothing selected yet
-      if (filtered.length === 1 && !value) {
+      if (filtered.length === 1 && !value && !isBackground) {
         onChange(filtered[0].id);
       }
+      setHasFetched(true);
     } catch (error) {
       console.error("Failed to load integrations:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadIntegrations();
+    // Always fetch in background, but track if it's the first fetch
+    loadIntegrations(!hasCachedData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [integrationType, integrationsVersion]);
+  }, [integrationType]);
+
+  // Listen for version changes (from other components creating/editing integrations)
+  useEffect(() => {
+    const unsubscribe = integrationsVersionAtom.onMount?.((setAtom) => {
+      // Re-fetch when version changes
+      loadIntegrations(true);
+    });
+    return unsubscribe;
+  }, []);
 
   const handleNewIntegrationCreated = async (integrationId: string) => {
-    await loadIntegrations();
+    await loadIntegrations(true);
     onChange(integrationId);
     setShowNewDialog(false);
-    // Increment version to trigger auto-fix for other nodes that need this integration type
+    // Increment version to trigger re-fetch in other selectors
+    integrationsVersion.current += 1;
     setIntegrationsVersion((v) => v + 1);
   };
 
   const handleEditSuccess = async () => {
-    await loadIntegrations();
+    await loadIntegrations(true);
     setEditingIntegration(null);
+    integrationsVersion.current += 1;
     setIntegrationsVersion((v) => v + 1);
   };
 
@@ -86,10 +103,15 @@ export function IntegrationSelector({
     }
   };
 
-  if (loading) {
+  // Only show loading skeleton if we have no cached data and haven't fetched yet
+  if (!hasCachedData && !hasFetched) {
     return (
       <div className="flex flex-col gap-1">
-        <div className="h-8 animate-pulse rounded-md bg-muted" />
+        <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
+          <div className="size-4 shrink-0 animate-pulse rounded-full bg-muted" />
+          <div className="h-4 flex-1 animate-pulse rounded bg-muted" />
+          <div className="size-6 shrink-0 animate-pulse rounded bg-muted" />
+        </div>
       </div>
     );
   }
@@ -188,8 +210,9 @@ export function IntegrationSelector({
           mode="edit"
           onClose={() => setEditingIntegration(null)}
           onDelete={async () => {
-            await loadIntegrations();
+            await loadIntegrations(true);
             setEditingIntegration(null);
+            integrationsVersion.current += 1;
             setIntegrationsVersion((v) => v + 1);
           }}
           onSuccess={handleEditSuccess}
