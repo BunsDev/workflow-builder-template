@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
 import { isAiGatewayManagedKeysEnabled } from "@/lib/ai-gateway/config";
-import { encryptAiGatewayKey } from "@/lib/ai-gateway/crypto";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { encrypt } from "@/lib/db/integrations";
@@ -84,7 +83,7 @@ async function createVercelApiKey(
 
 type SaveIntegrationParams = {
   userId: string;
-  encryptedKey: string;
+  apiKey: string;
   apiKeyId: string;
   teamId: string;
   teamName: string;
@@ -96,10 +95,10 @@ type SaveIntegrationParams = {
  * The apiKeyId and teamId are stored in config for later deletion
  */
 async function saveIntegration(params: SaveIntegrationParams): Promise<string> {
-  const { userId, encryptedKey, apiKeyId, teamId, teamName } = params;
+  const { userId, apiKey, apiKeyId, teamId, teamName } = params;
 
-  // Config contains the JWE-encrypted API key plus metadata
-  const configData = { apiKey: encryptedKey, managedKeyId: apiKeyId, teamId };
+  // Config contains the API key plus metadata for managing the key
+  const configData = { apiKey, managedKeyId: apiKeyId, teamId };
   // Encrypt the entire config for storage (consistent with other integrations)
   const encryptedConfig = encrypt(JSON.stringify(configData));
 
@@ -182,23 +181,18 @@ export async function POST(request: Request) {
   }
 
   try {
-    const apiKey = await createVercelApiKey(account.accessToken, teamId);
-    if (!apiKey) {
+    const vercelApiKey = await createVercelApiKey(account.accessToken, teamId);
+    if (!vercelApiKey) {
       return Response.json(
         { error: "Failed to create API key" },
         { status: 500 }
       );
     }
 
-    const encryptedKey = await encryptAiGatewayKey({
-      apiKey: apiKey.token,
-      userId: session.user.id,
-    });
-
     const integrationId = await saveIntegration({
       userId: session.user.id,
-      encryptedKey,
-      apiKeyId: apiKey.id,
+      apiKey: vercelApiKey.token,
+      apiKeyId: vercelApiKey.id,
       teamId,
       teamName: teamName || "AI Gateway",
     });
