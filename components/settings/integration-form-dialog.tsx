@@ -40,6 +40,8 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import {
   aiGatewayStatusAtom,
+  aiGatewayTeamsAtom,
+  aiGatewayTeamsLoadingAtom,
   showAiGatewayConsentModalAtom,
 } from "@/lib/ai-gateway/state";
 import { api, type Integration } from "@/lib/api-client";
@@ -582,6 +584,58 @@ export function IntegrationFormDialog({
       setStep(preselectedType ? "configure" : "select");
     }
   }, [integration, preselectedType]);
+
+  // AI Gateway atoms for fetching status and teams
+  const setAiGatewayStatus = useSetAtom(aiGatewayStatusAtom);
+  const setTeams = useSetAtom(aiGatewayTeamsAtom);
+  const setTeamsLoading = useSetAtom(aiGatewayTeamsLoadingAtom);
+
+  // Handle preselected AI Gateway - fetch status/teams and show consent modal if managed keys available
+  useEffect(() => {
+    if (!open || preselectedType !== "ai-gateway" || mode !== "create") {
+      return;
+    }
+
+    // If we already have status and managed keys are available, show consent modal
+    if (shouldUseManagedKeys) {
+      onClose();
+      setShowConsentModal(true);
+      return;
+    }
+
+    // If status is null (not fetched yet), fetch it and teams
+    if (aiGatewayStatus === null) {
+      api.aiGateway.getStatus().then((status) => {
+        setAiGatewayStatus(status);
+        // Check if managed keys should be used after fetching
+        if (status?.enabled && status?.isVercelUser) {
+          // Also fetch teams before showing consent modal
+          setTeamsLoading(true);
+          api.aiGateway
+            .getTeams()
+            .then((response) => {
+              setTeams(response.teams);
+            })
+            .finally(() => {
+              setTeamsLoading(false);
+              onClose();
+              setShowConsentModal(true);
+            });
+        }
+      });
+    }
+  }, [
+    open,
+    preselectedType,
+    mode,
+    aiGatewayStatus,
+    shouldUseManagedKeys,
+    onClose,
+    setShowConsentModal,
+    setAiGatewayStatus,
+    setTeams,
+    setTeamsLoading,
+  ]);
 
   const handleSelectType = (type: IntegrationType) => {
     // If selecting AI Gateway and managed keys are available, show consent modal
