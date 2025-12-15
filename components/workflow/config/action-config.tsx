@@ -1,15 +1,11 @@
 "use client";
 
-import { HelpCircle, MoreHorizontal, Plus, Settings } from "lucide-react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { HelpCircle, Plus, Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { IntegrationFormDialog } from "@/components/settings/integration-form-dialog";
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { IntegrationSelector } from "@/components/ui/integration-selector";
 import { Label } from "@/components/ui/label";
@@ -28,6 +24,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  aiGatewayStatusAtom,
+  openAiGatewayConsentModalAtom,
+} from "@/lib/ai-gateway/state";
+import { integrationsVersionAtom } from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import {
   findActionById,
@@ -41,6 +42,7 @@ type ActionConfigProps = {
   config: Record<string, unknown>;
   onUpdateConfig: (key: string, value: string) => void;
   disabled: boolean;
+  isOwner?: boolean;
 };
 
 // Database Query fields component
@@ -289,6 +291,7 @@ export function ActionConfig({
   config,
   onUpdateConfig,
   disabled,
+  isOwner = true,
 }: ActionConfigProps) {
   const actionType = (config?.actionType as string) || "";
   const categories = useCategoryData();
@@ -296,6 +299,12 @@ export function ActionConfig({
 
   const selectedCategory = actionType ? getCategoryForAction(actionType) : null;
   const [category, setCategory] = useState<string>(selectedCategory || "");
+  const [showAddConnectionDialog, setShowAddConnectionDialog] = useState(false);
+  const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
+
+  // AI Gateway managed keys state
+  const aiGatewayStatus = useAtomValue(aiGatewayStatusAtom);
+  const openConsentModal = useSetAtom(openAiGatewayConsentModalAtom);
 
   // Sync category state when actionType changes (e.g., when switching nodes)
   useEffect(() => {
@@ -339,6 +348,30 @@ export function ActionConfig({
     const action = findActionById(actionType);
     return action?.integration as IntegrationType | undefined;
   }, [actionType]);
+
+  // Check if AI Gateway managed keys should be offered (user can have multiple for different teams)
+  const shouldUseManagedKeys =
+    integrationType === "ai-gateway" &&
+    aiGatewayStatus?.enabled &&
+    aiGatewayStatus?.isVercelUser;
+
+  const handleConsentSuccess = (integrationId: string) => {
+    onUpdateConfig("integrationId", integrationId);
+    setIntegrationsVersion((v) => v + 1);
+  };
+
+  const handleAddSecondaryConnection = () => {
+    if (shouldUseManagedKeys) {
+      openConsentModal({
+        onConsent: handleConsentSuccess,
+        onManualEntry: () => {
+          setShowAddConnectionDialog(true);
+        },
+      });
+    } else {
+      setShowAddConnectionDialog(true);
+    }
+  };
 
   return (
     <>
@@ -402,7 +435,7 @@ export function ActionConfig({
         </div>
       </div>
 
-      {integrationType && (
+      {integrationType && isOwner && (
         <div className="space-y-2">
           <div className="ml-1 flex items-center justify-between">
             <div className="flex items-center gap-1">
@@ -418,30 +451,32 @@ export function ActionConfig({
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  className="size-6"
-                  disabled={disabled}
-                  size="icon"
-                  variant="ghost"
-                >
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Plus className="mr-2 size-4" />
-                  Add Secondary Connection(s)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              className="size-6"
+              disabled={disabled}
+              onClick={handleAddSecondaryConnection}
+              size="icon"
+              variant="ghost"
+            >
+              <Plus className="size-4" />
+            </Button>
           </div>
           <IntegrationSelector
             disabled={disabled}
             integrationType={integrationType}
             onChange={(id) => onUpdateConfig("integrationId", id)}
             value={(config?.integrationId as string) || ""}
+          />
+          <IntegrationFormDialog
+            mode="create"
+            onClose={() => setShowAddConnectionDialog(false)}
+            onSuccess={(integrationId) => {
+              setShowAddConnectionDialog(false);
+              setIntegrationsVersion((v) => v + 1);
+              onUpdateConfig("integrationId", integrationId);
+            }}
+            open={showAddConnectionDialog}
+            preselectedType={integrationType}
           />
         </div>
       )}
