@@ -12,7 +12,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -42,7 +42,7 @@ import {
   aiGatewayStatusAtom,
   aiGatewayTeamsAtom,
   aiGatewayTeamsLoadingAtom,
-  showAiGatewayConsentModalAtom,
+  openAiGatewayConsentModalAtom,
 } from "@/lib/ai-gateway/state";
 import { api, type Integration } from "@/lib/api-client";
 import type { IntegrationType } from "@/lib/types/integration";
@@ -555,7 +555,7 @@ export function IntegrationFormDialog({
 
   // AI Gateway managed keys state
   const aiGatewayStatus = useAtomValue(aiGatewayStatusAtom);
-  const setShowConsentModal = useSetAtom(showAiGatewayConsentModalAtom);
+  const openConsentModal = useSetAtom(openAiGatewayConsentModalAtom);
 
   // Check if AI Gateway managed keys should be offered
   const shouldUseManagedKeys =
@@ -590,6 +590,16 @@ export function IntegrationFormDialog({
   const setTeams = useSetAtom(aiGatewayTeamsAtom);
   const setTeamsLoading = useSetAtom(aiGatewayTeamsLoadingAtom);
 
+  // Helper to open consent modal with callbacks
+  const showConsentModalWithCallbacks = useCallback(() => {
+    onClose();
+    openConsentModal({
+      onConsent: (integrationId: string) => {
+        onSuccess?.(integrationId);
+      },
+    });
+  }, [onClose, openConsentModal, onSuccess]);
+
   // Handle preselected AI Gateway - fetch status/teams and show consent modal if managed keys available
   useEffect(() => {
     if (!open || preselectedType !== "ai-gateway" || mode !== "create") {
@@ -598,8 +608,7 @@ export function IntegrationFormDialog({
 
     // If we already have status and managed keys are available, show consent modal
     if (shouldUseManagedKeys) {
-      onClose();
-      setShowConsentModal(true);
+      showConsentModalWithCallbacks();
       return;
     }
 
@@ -618,8 +627,7 @@ export function IntegrationFormDialog({
             })
             .finally(() => {
               setTeamsLoading(false);
-              onClose();
-              setShowConsentModal(true);
+              showConsentModalWithCallbacks();
             });
         }
       });
@@ -630,8 +638,7 @@ export function IntegrationFormDialog({
     mode,
     aiGatewayStatus,
     shouldUseManagedKeys,
-    onClose,
-    setShowConsentModal,
+    showConsentModalWithCallbacks,
     setAiGatewayStatus,
     setTeams,
     setTeamsLoading,
@@ -640,8 +647,7 @@ export function IntegrationFormDialog({
   const handleSelectType = (type: IntegrationType) => {
     // If selecting AI Gateway and managed keys are available, show consent modal
     if (type === "ai-gateway" && shouldUseManagedKeys) {
-      onClose();
-      setShowConsentModal(true);
+      showConsentModalWithCallbacks();
       return;
     }
 
