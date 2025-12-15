@@ -21,30 +21,46 @@ type VercelTeamApiResponse = {
 };
 
 type VercelUserResponse = {
+  id: string;
+  username: string;
+  name?: string;
+  avatar?: string;
+  defaultTeamId: string | null;
+};
+
+type UserInfo = {
+  id: string;
+  name: string;
+  avatar: string;
   defaultTeamId: string | null;
 };
 
 /**
- * Fetch user's default team ID from Vercel API
+ * Fetch user info from Vercel API
  */
-async function fetchDefaultTeamId(accessToken: string): Promise<string | null> {
+async function fetchUserInfo(accessToken: string): Promise<UserInfo | null> {
   const response = await fetch("https://api.vercel.com/v2/user", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
   if (!response.ok) return null;
 
-  const user = (await response.json()) as { user?: VercelUserResponse };
-  return user.user?.defaultTeamId ?? null;
+  const data = (await response.json()) as { user?: VercelUserResponse };
+  if (!data.user) return null;
+
+  return {
+    id: data.user.id,
+    name: data.user.name || data.user.username,
+    // User avatar URL uses their userId
+    avatar: `https://vercel.com/api/www/avatar?userId=${data.user.id}&s=64`,
+    defaultTeamId: data.user.defaultTeamId,
+  };
 }
 
 /**
  * Fetch teams from Vercel API and transform to our format
  */
-async function fetchTeams(
-  accessToken: string,
-  defaultTeamId: string | null
-): Promise<VercelTeam[]> {
+async function fetchTeams(accessToken: string): Promise<VercelTeam[]> {
   const response = await fetch("https://api.vercel.com/v2/teams", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -60,20 +76,13 @@ async function fetchTeams(
       id: team.id,
       name: team.name,
       slug: team.slug,
-      // Team avatars are IDs - construct full URL
-      avatar: team.avatar
-        ? `https://vercel.com/api/www/avatar/${team.avatar}?s=64`
-        : undefined,
-      isPersonal: team.id === defaultTeamId,
+      // Team avatar URL uses teamId
+      avatar: `https://vercel.com/api/www/avatar?teamId=${team.id}&s=64`,
+      isPersonal: false,
     });
   }
 
-  // Sort: personal/default team first, then alphabetically by name
-  return teams.sort((a, b) => {
-    if (a.isPersonal) return -1;
-    if (b.isPersonal) return 1;
-    return a.name.localeCompare(b.name);
-  });
+  return teams;
 }
 
 /**
@@ -102,13 +111,31 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Fetch user's default team ID first
-    const defaultTeamId = await fetchDefaultTeamId(account.accessToken);
+    // Fetch user info and teams in parallel
+    const [userInfo, teams] = await Promise.all([
+      fetchUserInfo(account.accessToken),
+      fetchTeams(account.accessToken),
+    ]);
 
-    // Fetch teams and mark the default/personal one
-    const teams = await fetchTeams(account.accessToken, defaultTeamId);
+    // Build final list: personal account first, then teams sorted alphabetically
+    const allTeams: VercelTeam[] = [];
 
-    return Response.json({ teams });
+    // Add user's personal account (uses their user ID as team ID)
+    if (userInfo) {
+      allTeams.push({
+        id: userInfo.id,
+        name: userInfo.name,
+        slug: userInfo.name.toLowerCase().replace(/\s+/g, "-"),
+        avatar: userInfo.avatar,
+        isPersonal: true,
+      });
+    }
+
+    // Add teams sorted alphabetically
+    const sortedTeams = teams.sort((a, b) => a.name.localeCompare(b.name));
+    allTeams.push(...sortedTeams);
+
+    return Response.json({ teams: allTeams });
   } catch (e) {
     console.error("[ai-gateway] Error fetching teams:", e);
     return Response.json({ error: "Failed to fetch teams" }, { status: 500 });
