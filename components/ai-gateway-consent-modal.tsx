@@ -17,6 +17,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -155,28 +156,33 @@ export function AiGatewayConsentModal() {
                   <SelectValue placeholder="Select a team" />
                 </SelectTrigger>
                 <SelectContent>
-                  {teams.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>
-                      <div className="flex items-center gap-2">
-                        {team.avatar ? (
-                          // biome-ignore lint/correctness/useImageSize: Avatar has fixed size
-                          // biome-ignore lint/performance/noImgElement: External Vercel avatar
-                          <img
-                            alt=""
-                            className="size-4 rounded-full bg-white"
-                            src={team.avatar}
-                          />
-                        ) : (
-                          <div className="size-4 rounded-full bg-white" />
-                        )}
-                        <span>{team.name}</span>
-                        {team.isPersonal && (
-                          <span className="text-muted-foreground text-xs">
-                            (Personal)
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
+                  {teams.map((team, index) => (
+                    <div key={team.id}>
+                      <SelectItem value={team.id}>
+                        <div className="flex items-center gap-2">
+                          {team.avatar ? (
+                            // biome-ignore lint/correctness/useImageSize: Avatar has fixed size
+                            // biome-ignore lint/performance/noImgElement: External Vercel avatar
+                            <img
+                              alt=""
+                              className="size-4 rounded-full bg-white"
+                              src={team.avatar}
+                            />
+                          ) : (
+                            <div className="size-4 rounded-full bg-white" />
+                          )}
+                          <span>{team.name}</span>
+                          {team.isPersonal && (
+                            <span className="text-muted-foreground text-xs">
+                              (Personal)
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                      {team.isPersonal && index < teams.length - 1 && (
+                        <SelectSeparator />
+                      )}
+                    </div>
                   ))}
                 </SelectContent>
               </Select>
