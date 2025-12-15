@@ -212,8 +212,9 @@ export async function POST(request: Request) {
 }
 
 /**
- * DELETE /api/ai-gateway/consent
+ * DELETE /api/ai-gateway/consent?integrationId=xxx
  * Revoke consent and delete the API key
+ * Requires integrationId query parameter to specify which integration to delete
  */
 export async function DELETE(request: Request) {
   if (!isAiGatewayManagedKeysEnabled()) {
@@ -225,13 +226,28 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "Not authenticated" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const integrationId = searchParams.get("integrationId");
+
+  if (!integrationId) {
+    return Response.json(
+      { error: "integrationId query parameter is required" },
+      { status: 400 }
+    );
+  }
+
   const managedIntegration = await db.query.integrations.findFirst({
     where: and(
+      eq(integrations.id, integrationId),
       eq(integrations.userId, session.user.id),
       eq(integrations.type, "ai-gateway"),
       eq(integrations.isManaged, true)
     ),
   });
+
+  if (!managedIntegration) {
+    return Response.json({ error: "Integration not found" }, { status: 404 });
+  }
 
   // Get managedKeyId and teamId from config (decrypt it first since it's stored encrypted)
   let config: { managedKeyId?: string; teamId?: string } | null = null;
@@ -262,11 +278,9 @@ export async function DELETE(request: Request) {
     }
   }
 
-  if (managedIntegration) {
-    await db
-      .delete(integrations)
-      .where(eq(integrations.id, managedIntegration.id));
-  }
+  await db
+    .delete(integrations)
+    .where(eq(integrations.id, managedIntegration.id));
 
   return Response.json({ success: true, hasManagedKey: false });
 }
