@@ -166,10 +166,16 @@ export function IntegrationSelector({
     }
   }, [integrationsVersion, loadIntegrations]);
 
-  // Auto-select single integration from cached data
+  // Auto-select first integration when none is selected or current selection is invalid
   useEffect(() => {
-    if (integrations.length === 1 && !value && !disabled) {
-      onChange(integrations[0].id);
+    if (integrations.length > 0 && !disabled) {
+      // Check if current value exists in available integrations
+      const currentExists = value && integrations.some((i) => i.id === value);
+      if (!currentExists) {
+        // Prefer managed integrations, fall back to first available
+        const managed = integrations.find((i) => i.isManaged);
+        onChange(managed?.id || integrations[0].id);
+      }
     }
   }, [integrations, value, disabled, onChange]);
 
