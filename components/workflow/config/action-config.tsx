@@ -42,6 +42,7 @@ type ActionConfigProps = {
   config: Record<string, unknown>;
   onUpdateConfig: (key: string, value: string) => void;
   disabled: boolean;
+  isOwner?: boolean;
 };
 
 // Database Query fields component
@@ -290,6 +291,7 @@ export function ActionConfig({
   config,
   onUpdateConfig,
   disabled,
+  isOwner = true,
 }: ActionConfigProps) {
   const actionType = (config?.actionType as string) || "";
   const categories = useCategoryData();
@@ -433,7 +435,7 @@ export function ActionConfig({
         </div>
       </div>
 
-      {integrationType && (
+      {integrationType && isOwner && (
         <div className="space-y-2">
           <div className="ml-1 flex items-center justify-between">
             <div className="flex items-center gap-1">

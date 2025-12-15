@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { isAiGatewayManagedKeysEnabled } from "@/lib/ai-gateway/config";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { encrypt } from "@/lib/db/integrations";
+import { decrypt, encrypt } from "@/lib/db/integrations";
 import { accounts, integrations } from "@/lib/db/schema";
 import { generateId } from "@/lib/utils/id";
 
@@ -233,11 +233,16 @@ export async function DELETE(request: Request) {
     ),
   });
 
-  // Get managedKeyId and teamId from config
-  const config = managedIntegration?.config as {
-    managedKeyId?: string;
-    teamId?: string;
-  };
+  // Get managedKeyId and teamId from config (decrypt it first since it's stored encrypted)
+  let config: { managedKeyId?: string; teamId?: string } | null = null;
+  if (managedIntegration?.config) {
+    try {
+      const decrypted = decrypt(managedIntegration.config as string);
+      config = JSON.parse(decrypted);
+    } catch (e) {
+      console.error("[ai-gateway] Failed to decrypt config:", e);
+    }
+  }
 
   if (config?.managedKeyId && config?.teamId) {
     const account = await db.query.accounts.findFirst({

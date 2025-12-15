@@ -824,6 +824,7 @@ export const PanelInner = () => {
                 <ActionConfig
                   config={selectedNode.data.config || {}}
                   disabled={isGenerating || !isOwner}
+                  isOwner={isOwner}
                   onUpdateConfig={handleUpdateConfig}
                 />
               ) : null}

@@ -129,7 +129,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const setCurrentWorkflowVisibility = useSetAtom(
     currentWorkflowVisibilityAtom
   );
-  const setIsWorkflowOwner = useSetAtom(isWorkflowOwnerAtom);
+  const [isOwner, setIsWorkflowOwner] = useAtom(isWorkflowOwnerAtom);
   const setGlobalIntegrations = useSetAtom(integrationsAtom);
   const setIntegrationsLoaded = useSetAtom(integrationsLoadedAtom);
   const integrationsVersion = useAtomValue(integrationsVersionAtom);
@@ -427,6 +427,11 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       return;
     }
 
+    // Skip for non-owners (they can't modify the workflow and may not be authenticated)
+    if (!isOwner) {
+      return;
+    }
+
     // Skip if already checked for this workflow+version combination
     const lastFix = lastAutoFixRef.current;
     if (
@@ -480,6 +485,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     nodes,
     currentWorkflowId,
     integrationsVersion,
+    isOwner,
     updateNodeData,
     setGlobalIntegrations,
     setIntegrationsLoaded,
