@@ -76,8 +76,6 @@ import {
   selectedEdgeAtom,
   selectedExecutionIdAtom,
   selectedNodeAtom,
-  showClearDialogAtom,
-  showDeleteDialogAtom,
   triggerExecuteAtom,
   undoAtom,
   updateNodeDataAtom,
@@ -663,8 +661,6 @@ function useWorkflowState() {
   );
   const isOwner = useAtomValue(isWorkflowOwnerAtom);
   const router = useRouter();
-  const [showClearDialog, setShowClearDialog] = useAtom(showClearDialogAtom);
-  const [showDeleteDialog, setShowDeleteDialog] = useAtom(showDeleteDialogAtom);
   const [isSaving, setIsSaving] = useAtom(isSavingAtom);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useAtom(
     hasUnsavedChangesAtom
@@ -728,10 +724,6 @@ function useWorkflowState() {
     setWorkflowVisibility,
     isOwner,
     router,
-    showClearDialog,
-    setShowClearDialog,
-    showDeleteDialog,
-    setShowDeleteDialog,
     isSaving,
     setIsSaving,
     hasUnsavedChanges,
@@ -779,9 +771,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     setIsExecuting,
     setIsSaving,
     setHasUnsavedChanges,
-    setShowClearDialog,
     clearWorkflow,
-    setShowDeleteDialog,
     setCurrentWorkflowName,
     setWorkflowVisibility,
     setAllWorkflows,
@@ -844,24 +834,38 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   };
 
   const handleClearWorkflow = () => {
-    clearWorkflow();
-    setShowClearDialog(false);
+    openOverlay(ConfirmOverlay, {
+      title: "Clear Workflow",
+      message:
+        "Are you sure you want to clear all nodes and connections? This action cannot be undone.",
+      confirmLabel: "Clear Workflow",
+      confirmVariant: "destructive" as const,
+      destructive: true,
+      onConfirm: () => {
+        clearWorkflow();
+      },
+    });
   };
 
-  const handleDeleteWorkflow = async () => {
-    if (!currentWorkflowId) {
-      return;
-    }
-
-    try {
-      await api.workflow.delete(currentWorkflowId);
-      setShowDeleteDialog(false);
-      toast.success("Workflow deleted successfully");
-      window.location.href = "/";
-    } catch (error) {
-      console.error("Failed to delete workflow:", error);
-      toast.error("Failed to delete workflow. Please try again.");
-    }
+  const handleDeleteWorkflow = () => {
+    openOverlay(ConfirmOverlay, {
+      title: "Delete Workflow",
+      message: `Are you sure you want to delete "${workflowName}"? This will permanently delete the workflow. This cannot be undone.`,
+      confirmLabel: "Delete Workflow",
+      confirmVariant: "destructive" as const,
+      destructive: true,
+      onConfirm: async () => {
+        if (!currentWorkflowId) return;
+        try {
+          await api.workflow.delete(currentWorkflowId);
+          toast.success("Workflow deleted successfully");
+          window.location.href = "/";
+        } catch (error) {
+          console.error("Failed to delete workflow:", error);
+          toast.error("Failed to delete workflow. Please try again.");
+        }
+      },
+    });
   };
 
   const handleRenameWorkflow = async () => {
@@ -1531,32 +1535,6 @@ function WorkflowDialogsComponent({
   return (
     <>
       <Dialog
-        onOpenChange={state.setShowClearDialog}
-        open={state.showClearDialog}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Clear Workflow</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to clear all nodes and connections? This
-              action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              onClick={() => state.setShowClearDialog(false)}
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            <Button onClick={actions.handleClearWorkflow} variant="destructive">
-              Clear Workflow
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
         onOpenChange={state.setShowRenameDialog}
         open={state.showRenameDialog}
       >
@@ -1597,36 +1575,6 @@ function WorkflowDialogsComponent({
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        onOpenChange={state.setShowDeleteDialog}
-        open={state.showDeleteDialog}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Workflow</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &ldquo;{state.workflowName}
-              &rdquo;? This will permanently delete the workflow. This cannot be
-              undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              onClick={() => state.setShowDeleteDialog(false)}
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={actions.handleDeleteWorkflow}
-              variant="destructive"
-            >
-              Delete Workflow
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -28,6 +28,7 @@ import type { IntegrationType } from "@/lib/types/integration";
 import { generateWorkflowCode } from "@/lib/workflow-codegen";
 import {
   clearNodeStatusesAtom,
+  clearWorkflowAtom,
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
   deleteEdgeAtom,
@@ -40,8 +41,6 @@ import {
   propertiesPanelActiveTabAtom,
   selectedEdgeAtom,
   selectedNodeAtom,
-  showClearDialogAtom,
-  showDeleteDialogAtom,
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
 import { findActionById } from "@/plugins";
@@ -99,8 +98,7 @@ export function ConfigurationOverlay({ overlayId }: ConfigurationOverlayProps) {
   const deleteNode = useSetAtom(deleteNodeAtom);
   const deleteEdge = useSetAtom(deleteEdgeAtom);
   const clearNodeStatuses = useSetAtom(clearNodeStatusesAtom);
-  const setShowClearDialog = useSetAtom(showClearDialogAtom);
-  const setShowDeleteDialog = useSetAtom(showDeleteDialogAtom);
+  const clearWorkflow = useSetAtom(clearWorkflowAtom);
   const [newlyCreatedNodeId, setNewlyCreatedNodeId] = useAtom(
     newlyCreatedNodeIdAtom
   );
@@ -298,14 +296,40 @@ export function ConfigurationOverlay({ overlayId }: ConfigurationOverlayProps) {
 
   // Handle clear workflow
   const handleClearWorkflow = () => {
-    closeAll();
-    setShowClearDialog(true);
+    push(ConfirmOverlay, {
+      title: "Clear Workflow",
+      message:
+        "Are you sure you want to clear all nodes and connections? This action cannot be undone.",
+      confirmLabel: "Clear Workflow",
+      confirmVariant: "destructive" as const,
+      destructive: true,
+      onConfirm: () => {
+        clearWorkflow();
+      },
+    });
   };
 
   // Handle delete workflow
   const handleDeleteWorkflow = () => {
-    closeAll();
-    setShowDeleteDialog(true);
+    push(ConfirmOverlay, {
+      title: "Delete Workflow",
+      message: `Are you sure you want to delete "${currentWorkflowName}"? This will permanently delete the workflow. This cannot be undone.`,
+      confirmLabel: "Delete Workflow",
+      confirmVariant: "destructive" as const,
+      destructive: true,
+      onConfirm: async () => {
+        if (!currentWorkflowId) return;
+        try {
+          await api.workflow.delete(currentWorkflowId);
+          closeAll();
+          toast.success("Workflow deleted successfully");
+          window.location.href = "/";
+        } catch (error) {
+          console.error("Failed to delete workflow:", error);
+          toast.error("Failed to delete workflow. Please try again.");
+        }
+      },
+    });
   };
 
   // Generate full workflow code

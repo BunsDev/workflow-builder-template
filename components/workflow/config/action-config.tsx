@@ -27,7 +27,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { aiGatewayStatusAtom } from "@/lib/ai-gateway/state";
-import { integrationsVersionAtom } from "@/lib/integrations-store";
+import {
+  integrationsAtom,
+  integrationsVersionAtom,
+} from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import {
   findActionById,
@@ -299,6 +302,7 @@ export function ActionConfig({
   const selectedCategory = actionType ? getCategoryForAction(actionType) : null;
   const [category, setCategory] = useState<string>(selectedCategory || "");
   const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
+  const globalIntegrations = useAtomValue(integrationsAtom);
   const { push } = useOverlay();
 
   // AI Gateway managed keys state
@@ -352,6 +356,12 @@ export function ActionConfig({
     integrationType === "ai-gateway" &&
     aiGatewayStatus?.enabled &&
     aiGatewayStatus?.isVercelUser;
+
+  // Check if there are existing connections for this integration type
+  const hasExistingConnections = useMemo(() => {
+    if (!integrationType) return false;
+    return globalIntegrations.some((i) => i.type === integrationType);
+  }, [integrationType, globalIntegrations]);
 
   const handleConsentSuccess = (integrationId: string) => {
     onUpdateConfig("integrationId", integrationId);
@@ -459,15 +469,17 @@ export function ActionConfig({
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <Button
-              className="size-6"
-              disabled={disabled}
-              onClick={handleAddSecondaryConnection}
-              size="icon"
-              variant="ghost"
-            >
-              <Plus className="size-4" />
-            </Button>
+            {hasExistingConnections && (
+              <Button
+                className="size-6"
+                disabled={disabled}
+                onClick={handleAddSecondaryConnection}
+                size="icon"
+                variant="ghost"
+              >
+                <Plus className="size-4" />
+              </Button>
+            )}
           </div>
           <IntegrationSelector
             disabled={disabled}
