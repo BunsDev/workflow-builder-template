@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Copy,
   Download,
-  FlaskConical,
   Globe,
   Loader2,
   Lock,
@@ -23,7 +22,6 @@ import { nanoid } from "nanoid";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -97,6 +95,7 @@ import { DeployButton } from "../deploy-button";
 import { GitHubStarsButton } from "../github-stars-button";
 import { ConfigurationOverlay } from "../overlays/configuration-overlay";
 import { ConfirmOverlay } from "../overlays/confirm-overlay";
+import { ExportWorkflowOverlay } from "../overlays/export-workflow-overlay";
 import { MakePublicOverlay } from "../overlays/make-public-overlay";
 import { useOverlay } from "../overlays/overlay-provider";
 import { WorkflowIssuesOverlay } from "../overlays/workflow-issues-overlay";
@@ -685,7 +684,6 @@ function useWorkflowState() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [showCodeDialog, setShowCodeDialog] = useState(false);
-  const [showExportDialog, setShowExportDialog] = useState(false);
   const [generatedCode, _setGeneratedCode] = useState<string>("");
   const [allWorkflows, setAllWorkflows] = useState<
     Array<{
@@ -750,8 +748,6 @@ function useWorkflowState() {
     setIsDuplicating,
     showCodeDialog,
     setShowCodeDialog,
-    showExportDialog,
-    setShowExportDialog,
     generatedCode,
     allWorkflows,
     setAllWorkflows,
@@ -1257,13 +1253,13 @@ function ToolbarActions({
       {/* Save/Download - Mobile Vertical */}
       <ButtonGroup className="flex lg:hidden" orientation="vertical">
         <SaveButton handleSave={actions.handleSave} state={state} />
-        <DownloadButton state={state} />
+        <DownloadButton actions={actions} state={state} />
       </ButtonGroup>
 
       {/* Save/Download - Desktop Horizontal */}
       <ButtonGroup className="hidden lg:flex" orientation="horizontal">
         <SaveButton handleSave={actions.handleSave} state={state} />
-        <DownloadButton state={state} />
+        <DownloadButton actions={actions} state={state} />
       </ButtonGroup>
 
       {/* Visibility Toggle */}
@@ -1308,9 +1304,20 @@ function SaveButton({
 // Download Button Component
 function DownloadButton({
   state,
+  actions,
 }: {
   state: ReturnType<typeof useWorkflowState>;
+  actions: ReturnType<typeof useWorkflowActions>;
 }) {
+  const { open: openOverlay } = useOverlay();
+
+  const handleClick = () => {
+    openOverlay(ExportWorkflowOverlay, {
+      onExport: actions.handleDownload,
+      isDownloading: state.isDownloading,
+    });
+  };
+
   return (
     <Button
       className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
@@ -1320,7 +1327,7 @@ function DownloadButton({
         state.isGenerating ||
         !state.currentWorkflowId
       }
-      onClick={() => state.setShowExportDialog(true)}
+      onClick={handleClick}
       size="icon"
       title={
         state.isDownloading
@@ -1676,76 +1683,6 @@ function WorkflowDialogsComponent({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog
-        onOpenChange={state.setShowExportDialog}
-        open={state.showExportDialog}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Download className="size-5" />
-              Export Workflow as Code
-            </DialogTitle>
-            <DialogDescription>
-              Export your workflow as a standalone Next.js project that you can
-              run independently.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-muted-foreground text-sm">
-              This will generate a complete Next.js project containing your
-              workflow code. Once exported, you can run your workflow outside of
-              the Workflow Builder, deploy it to Vercel, or integrate it into
-              your existing applications.
-            </p>
-            <Alert>
-              <FlaskConical className="size-4" />
-              <AlertTitle>Experimental Feature</AlertTitle>
-              <AlertDescription className="block">
-                This feature is experimental and may have limitations. If you
-                encounter any issues, please{" "}
-                <a
-                  className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
-                  href="https://github.com/vercel-labs/workflow-builder-template/issues"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  report them on GitHub
-                </a>
-                .
-              </AlertDescription>
-            </Alert>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => state.setShowExportDialog(false)}
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            <Button
-              disabled={state.isDownloading}
-              onClick={() => {
-                state.setShowExportDialog(false);
-                actions.handleDownload();
-              }}
-            >
-              {state.isDownloading ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 size-4" />
-                  Export Project
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

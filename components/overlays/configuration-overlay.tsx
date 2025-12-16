@@ -191,7 +191,7 @@ export function ConfigurationOverlay({ overlayId }: ConfigurationOverlayProps) {
 
   const handleDeleteNode = useCallback(() => {
     push(ConfirmOverlay, {
-      title: "Delete Node",
+      title: "Delete Step",
       message:
         "Are you sure you want to delete this node? This action cannot be undone.",
       confirmLabel: "Delete",
@@ -243,12 +243,9 @@ export function ConfigurationOverlay({ overlayId }: ConfigurationOverlayProps) {
     });
   };
 
-  if (!selectedNode) {
-    return null;
-  }
-
-  // Determine which tabs to show
+  // Determine which tabs to show (only for node view)
   const showCodeTab =
+    selectedNode &&
     (selectedNode.data.type !== "trigger" ||
       (selectedNode.data.config?.triggerType as string) !== "Manual") &&
     selectedNode.data.config?.actionType !== "Condition";

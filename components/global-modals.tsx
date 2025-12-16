@@ -1,6 +1,5 @@
 "use client";
 
-import { AiGatewayConsentModal } from "@/components/ai-gateway-consent-modal";
 import { OverlayContainer } from "@/components/overlays/overlay-container";
 import { OverlaySync } from "@/components/overlays/overlay-sync";
 
@@ -10,7 +9,6 @@ import { OverlaySync } from "@/components/overlays/overlay-sync";
 export function GlobalModals() {
   return (
     <>
-      <AiGatewayConsentModal />
       <OverlayContainer />
       <OverlaySync />
     </>

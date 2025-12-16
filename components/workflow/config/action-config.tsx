@@ -4,6 +4,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { HelpCircle, Plus, Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ConfigureConnectionOverlay } from "@/components/overlays/add-connection-overlay";
+import { AiGatewayConsentOverlay } from "@/components/overlays/ai-gateway-consent-overlay";
 import { useOverlay } from "@/components/overlays/overlay-provider";
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
@@ -25,10 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  aiGatewayStatusAtom,
-  openAiGatewayConsentModalAtom,
-} from "@/lib/ai-gateway/state";
+import { aiGatewayStatusAtom } from "@/lib/ai-gateway/state";
 import { integrationsVersionAtom } from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import {
@@ -305,7 +303,6 @@ export function ActionConfig({
 
   // AI Gateway managed keys state
   const aiGatewayStatus = useAtomValue(aiGatewayStatusAtom);
-  const openConsentModal = useSetAtom(openAiGatewayConsentModalAtom);
 
   // Sync category state when actionType changes (e.g., when switching nodes)
   useEffect(() => {
@@ -375,7 +372,7 @@ export function ActionConfig({
 
   const handleAddSecondaryConnection = () => {
     if (shouldUseManagedKeys) {
-      openConsentModal({
+      push(AiGatewayConsentOverlay, {
         onConsent: handleConsentSuccess,
         onManualEntry: openConnectionOverlay,
       });

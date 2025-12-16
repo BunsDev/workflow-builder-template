@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfigureConnectionOverlay } from "@/components/overlays/add-connection-overlay";
+import { AiGatewayConsentOverlay } from "@/components/overlays/ai-gateway-consent-overlay";
 import { EditConnectionOverlay } from "@/components/overlays/edit-connection-overlay";
 import { useOverlay } from "@/components/overlays/overlay-provider";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ import {
   aiGatewayTeamsAtom,
   aiGatewayTeamsFetchedAtom,
   aiGatewayTeamsLoadingAtom,
-  openAiGatewayConsentModalAtom,
 } from "@/lib/ai-gateway/state";
 import { api, type Integration } from "@/lib/api-client";
 import {
@@ -57,7 +57,6 @@ export function IntegrationSelector({
   // AI Gateway user keys state
   const [aiGatewayStatus, setAiGatewayStatus] = useAtom(aiGatewayStatusAtom);
   const [aiGatewayStatusFetched, setAiGatewayStatusFetched] = useState(false);
-  const openConsentModal = useSetAtom(openAiGatewayConsentModalAtom);
 
   // AI Gateway teams state (pre-loaded for consent modal)
   const [teams, setTeams] = useAtom(aiGatewayTeamsAtom);
@@ -238,15 +237,15 @@ export function IntegrationSelector({
     if (onAddConnection) {
       onAddConnection();
     } else if (shouldUseManagedKeys) {
-      // For AI Gateway with managed keys enabled, show consent modal
-      openConsentModal({
+      // For AI Gateway with managed keys enabled, show consent overlay
+      push(AiGatewayConsentOverlay, {
         onConsent: handleConsentSuccess,
         onManualEntry: openNewConnectionOverlay,
       });
     } else {
       openNewConnectionOverlay();
     }
-  }, [onAddConnection, shouldUseManagedKeys, openConsentModal, handleConsentSuccess, openNewConnectionOverlay]);
+  }, [onAddConnection, shouldUseManagedKeys, push, handleConsentSuccess, openNewConnectionOverlay]);
 
   // Only show loading skeleton if we have no cached data and haven't fetched yet
   if (!hasCachedData && !hasFetched) {

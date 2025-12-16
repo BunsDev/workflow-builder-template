@@ -1051,7 +1051,7 @@ export const PanelInner = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Node</AlertDialogTitle>
+            <AlertDialogTitle>Delete Step</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this node? This action cannot be
               undone.

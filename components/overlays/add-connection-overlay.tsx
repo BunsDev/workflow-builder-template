@@ -11,7 +11,6 @@ import {
   aiGatewayStatusAtom,
   aiGatewayTeamsAtom,
   aiGatewayTeamsLoadingAtom,
-  openAiGatewayConsentModalAtom,
 } from "@/lib/ai-gateway/state";
 import { api } from "@/lib/api-client";
 import type { IntegrationType } from "@/lib/types/integration";
@@ -21,6 +20,7 @@ import {
   getSortedIntegrationTypes,
 } from "@/plugins";
 import { getIntegrationDescriptions } from "@/plugins/registry";
+import { AiGatewayConsentOverlay } from "./ai-gateway-consent-overlay";
 import { ConfirmOverlay } from "./confirm-overlay";
 import { Overlay } from "./overlay";
 import { useOverlay } from "./overlay-provider";
@@ -67,7 +67,6 @@ export function AddConnectionOverlay({
 
   // AI Gateway state
   const aiGatewayStatus = useAtomValue(aiGatewayStatusAtom);
-  const openConsentModal = useSetAtom(openAiGatewayConsentModalAtom);
   const setAiGatewayStatus = useSetAtom(aiGatewayStatusAtom);
   const setTeams = useSetAtom(aiGatewayTeamsAtom);
   const setTeamsLoading = useSetAtom(aiGatewayTeamsLoadingAtom);
@@ -88,13 +87,13 @@ export function AddConnectionOverlay({
   }, [integrationTypes, searchQuery]);
 
   const showConsentModalWithCallbacks = useCallback(() => {
-    closeAll();
-    openConsentModal({
+    push(AiGatewayConsentOverlay, {
       onConsent: (integrationId: string) => {
         onSuccess?.(integrationId);
+        closeAll();
       },
     });
-  }, [closeAll, openConsentModal, onSuccess]);
+  }, [push, closeAll, onSuccess]);
 
   const handleSelectType = (type: IntegrationType) => {
     // If selecting AI Gateway and managed keys are available, show consent modal

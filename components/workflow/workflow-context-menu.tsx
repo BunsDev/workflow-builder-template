@@ -51,7 +51,7 @@ export function WorkflowContextMenu({
       const nodeId = menuState.nodeId;
       onClose();
       openOverlay(ConfirmOverlay, {
-        title: "Delete Node",
+        title: "Delete Step",
         message:
           "Are you sure you want to delete this node? This action cannot be undone.",
         confirmLabel: "Delete",
