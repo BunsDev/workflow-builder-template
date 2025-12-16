@@ -4,9 +4,11 @@ import { useSetAtom } from "jotai";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { integrationsVersionAtom } from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import { ConfigureConnectionOverlay } from "./add-connection-overlay";
+import { ConfigurationOverlay } from "./configuration-overlay";
 import { Overlay } from "./overlay";
 import { useOverlay } from "./overlay-provider";
 import type { OverlayComponentProps } from "./types";
@@ -56,6 +58,7 @@ export function WorkflowIssuesOverlay({
 }: WorkflowIssuesOverlayProps) {
   const { push, closeAll } = useOverlay();
   const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
+  const isMobile = useIsMobile();
 
   const { brokenReferences, missingRequiredFields, missingIntegrations } =
     issues;
@@ -66,8 +69,16 @@ export function WorkflowIssuesOverlay({
     missingIntegrations.length;
 
   const handleGoToStep = (nodeId: string, fieldKey?: string) => {
-    closeAll();
+    // Select the node and set tab (this is handled by onGoToStep)
     onGoToStep(nodeId, fieldKey);
+
+    // On mobile, push ConfigurationOverlay on top so back button returns here
+    // On desktop, close all overlays since the sidebar shows the config
+    if (isMobile) {
+      push(ConfigurationOverlay, {});
+    } else {
+      closeAll();
+    }
   };
 
   const handleAddIntegration = (integrationType: IntegrationType) => {

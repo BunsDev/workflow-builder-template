@@ -594,6 +594,7 @@ function useWorkflowHandlers({
   const handleGoToStep = (nodeId: string, fieldKey?: string) => {
     setSelectedNodeId(nodeId);
     setActiveTab("properties");
+
     // Focus on the specific field after a short delay to allow the panel to render
     if (fieldKey) {
       setTimeout(() => {

@@ -57,8 +57,32 @@ const SYSTEM_ACTION_INTEGRATIONS: Record<string, IntegrationType> = {
   "Database Query": "database",
 };
 
+// Regex constants
+const NON_ALPHANUMERIC_REGEX = /[^a-zA-Z0-9\s]/g;
+const WORD_SPLIT_REGEX = /\s+/;
+
+// Helper to generate code filename based on node type
+function getCodeFilename(node: {
+  data: { type: string; config?: Record<string, unknown> };
+}): string {
+  if (node.data.type === "trigger") {
+    const triggerType = node.data.config?.triggerType as string;
+    if (triggerType === "Schedule") {
+      return "vercel.json";
+    }
+    const webhookPath = (node.data.config?.webhookPath as string) || "/webhook";
+    return `app/api${webhookPath}/route.ts`;
+  }
+  const actionType = (node.data.config?.actionType as string) || "action";
+  return `steps/${actionType
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")}-step.ts`;
+}
+
 type ConfigurationOverlayProps = OverlayComponentProps;
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex UI logic with multiple conditions
 export function ConfigurationOverlay({ overlayId }: ConfigurationOverlayProps) {
   const { push, closeAll } = useOverlay();
   const [selectedNodeId] = useAtom(selectedNodeAtom);
@@ -290,8 +314,8 @@ export function ConfigurationOverlay({ overlayId }: ConfigurationOverlayProps) {
   // Generate full workflow code
   const workflowCode = (() => {
     const baseName = currentWorkflowName
-      .replace(/[^a-zA-Z0-9\s]/g, "")
-      .split(/\s+/)
+      .replace(NON_ALPHANUMERIC_REGEX, "")
+      .split(WORD_SPLIT_REGEX)
       .map((word, index) =>
         index === 0
           ? word.toLowerCase()
@@ -646,18 +670,7 @@ export function ConfigurationOverlay({ overlayId }: ConfigurationOverlayProps) {
               <div className="flex items-center gap-2">
                 <FileCode className="size-3.5 text-muted-foreground" />
                 <code className="text-muted-foreground text-xs">
-                  {selectedNode.data.type === "trigger"
-                    ? (selectedNode.data.config?.triggerType as string) ===
-                      "Schedule"
-                      ? "vercel.json"
-                      : `app/api${(selectedNode.data.config?.webhookPath as string) || "/webhook"}/route.ts`
-                    : `steps/${(
-                        (selectedNode.data.config?.actionType as string) ||
-                        "action"
-                      )
-                        .toLowerCase()
-                        .replace(/\s+/g, "-")
-                        .replace(/[^a-z0-9-]/g, "")}-step.ts`}
+                  {getCodeFilename(selectedNode)}
                 </code>
               </div>
               <Button
