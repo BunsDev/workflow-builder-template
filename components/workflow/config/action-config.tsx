@@ -219,6 +219,48 @@ function ConditionFields({
   );
 }
 
+// System action fields wrapper - extracts conditional rendering to reduce complexity
+function SystemActionFields({
+  actionType,
+  config,
+  onUpdateConfig,
+  disabled,
+}: {
+  actionType: string;
+  config: Record<string, unknown>;
+  onUpdateConfig: (key: string, value: string) => void;
+  disabled: boolean;
+}) {
+  switch (actionType) {
+    case "HTTP Request":
+      return (
+        <HttpRequestFields
+          config={config}
+          disabled={disabled}
+          onUpdateConfig={onUpdateConfig}
+        />
+      );
+    case "Database Query":
+      return (
+        <DatabaseQueryFields
+          config={config}
+          disabled={disabled}
+          onUpdateConfig={onUpdateConfig}
+        />
+      );
+    case "Condition":
+      return (
+        <ConditionFields
+          config={config}
+          disabled={disabled}
+          onUpdateConfig={onUpdateConfig}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
 // System actions that don't have plugins
 const SYSTEM_ACTIONS: Array<{ id: string; label: string }> = [
   { id: "HTTP Request", label: "HTTP Request" },
@@ -491,29 +533,12 @@ export function ActionConfig({
       )}
 
       {/* System actions - hardcoded config fields */}
-      {config?.actionType === "HTTP Request" && (
-        <HttpRequestFields
-          config={config}
-          disabled={disabled}
-          onUpdateConfig={onUpdateConfig}
-        />
-      )}
-
-      {config?.actionType === "Database Query" && (
-        <DatabaseQueryFields
-          config={config}
-          disabled={disabled}
-          onUpdateConfig={onUpdateConfig}
-        />
-      )}
-
-      {config?.actionType === "Condition" && (
-        <ConditionFields
-          config={config}
-          disabled={disabled}
-          onUpdateConfig={onUpdateConfig}
-        />
-      )}
+      <SystemActionFields
+        actionType={(config?.actionType as string) || ""}
+        config={config}
+        disabled={disabled}
+        onUpdateConfig={onUpdateConfig}
+      />
 
       {/* Plugin actions - declarative config fields */}
       {pluginAction && !SYSTEM_ACTION_IDS.includes(actionType) && (
