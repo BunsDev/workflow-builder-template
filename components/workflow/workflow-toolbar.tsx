@@ -22,25 +22,8 @@ import { nanoid } from "nanoid";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,8 +31,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
 import { authClient, useSession } from "@/lib/auth-client";
 import { integrationsAtom } from "@/lib/integrations-store";
@@ -532,7 +513,6 @@ function useWorkflowHandlers({
   userIntegrations,
 }: WorkflowHandlerParams) {
   const { open: openOverlay } = useOverlay();
-  const [showUnsavedRunDialog, setShowUnsavedRunDialog] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup polling interval on unmount
@@ -637,8 +617,6 @@ function useWorkflowHandlers({
   };
 
   return {
-    showUnsavedRunDialog,
-    setShowUnsavedRunDialog,
     handleSave,
     handleExecute,
   };
@@ -679,8 +657,6 @@ function useWorkflowState() {
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
-  const [showCodeDialog, setShowCodeDialog] = useState(false);
-  const [generatedCode, _setGeneratedCode] = useState<string>("");
   const [allWorkflows, setAllWorkflows] = useState<
     Array<{
       id: string;
@@ -688,13 +664,6 @@ function useWorkflowState() {
       updatedAt: string;
     }>
   >([]);
-  const [showRenameDialog, setShowRenameDialog] = useState(false);
-  const [newWorkflowName, setNewWorkflowName] = useState(workflowName);
-
-  // Sync newWorkflowName when workflowName changes
-  useEffect(() => {
-    setNewWorkflowName(workflowName);
-  }, [workflowName]);
 
   // Load all workflows on mount
   useEffect(() => {
@@ -738,15 +707,8 @@ function useWorkflowState() {
     setIsDownloading,
     isDuplicating,
     setIsDuplicating,
-    showCodeDialog,
-    setShowCodeDialog,
-    generatedCode,
     allWorkflows,
     setAllWorkflows,
-    showRenameDialog,
-    setShowRenameDialog,
-    newWorkflowName,
-    setNewWorkflowName,
     setActiveTab,
     setNodes,
     setEdges,
@@ -772,14 +734,10 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     setIsSaving,
     setHasUnsavedChanges,
     clearWorkflow,
-    setCurrentWorkflowName,
     setWorkflowVisibility,
     setAllWorkflows,
-    newWorkflowName,
-    setShowRenameDialog,
     setIsDownloading,
     setIsDuplicating,
-    generatedCode,
     setActiveTab,
     setNodes,
     setEdges,
@@ -792,12 +750,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     session,
   } = state;
 
-  const {
-    showUnsavedRunDialog,
-    setShowUnsavedRunDialog,
-    handleSave,
-    handleExecute,
-  } = useWorkflowHandlers({
+  const { handleSave, handleExecute } = useWorkflowHandlers({
     currentWorkflowId,
     nodes,
     edges,
@@ -821,17 +774,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
       handleExecute();
     }
   }, [triggerExecute, setTriggerExecute, handleExecute]);
-
-  const handleSaveAndRun = async () => {
-    await handleSave();
-    setShowUnsavedRunDialog(false);
-    await handleExecute();
-  };
-
-  const handleRunWithoutSaving = async () => {
-    setShowUnsavedRunDialog(false);
-    await handleExecute();
-  };
 
   const handleClearWorkflow = () => {
     openOverlay(ConfirmOverlay, {
@@ -866,26 +808,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
         }
       },
     });
-  };
-
-  const handleRenameWorkflow = async () => {
-    if (!(currentWorkflowId && newWorkflowName.trim())) {
-      return;
-    }
-
-    try {
-      await api.workflow.update(currentWorkflowId, {
-        name: newWorkflowName,
-      });
-      setShowRenameDialog(false);
-      setCurrentWorkflowName(newWorkflowName);
-      toast.success("Workflow renamed successfully");
-      const workflows = await api.workflow.getAll();
-      setAllWorkflows(workflows);
-    } catch (error) {
-      console.error("Failed to rename workflow:", error);
-      toast.error("Failed to rename workflow. Please try again.");
-    }
   };
 
   const handleDownload = async () => {
@@ -947,11 +869,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     } catch (error) {
       console.error("Failed to load workflows:", error);
     }
-  };
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(generatedCode);
-    toast.success("Code copied to clipboard");
   };
 
   const handleToggleVisibility = async (newVisibility: WorkflowVisibility) => {
@@ -1017,18 +934,12 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   };
 
   return {
-    showUnsavedRunDialog,
-    setShowUnsavedRunDialog,
     handleSave,
     handleExecute,
-    handleSaveAndRun,
-    handleRunWithoutSaving,
     handleClearWorkflow,
     handleDeleteWorkflow,
-    handleRenameWorkflow,
     handleDownload,
     loadWorkflows,
-    handleCopyCode,
     handleToggleVisibility,
     handleDuplicate,
   };
@@ -1524,117 +1435,6 @@ function WorkflowMenuComponent({
   );
 }
 
-// Workflow Dialogs Component
-function WorkflowDialogsComponent({
-  state,
-  actions,
-}: {
-  state: ReturnType<typeof useWorkflowState>;
-  actions: ReturnType<typeof useWorkflowActions>;
-}) {
-  return (
-    <>
-      <Dialog
-        onOpenChange={state.setShowRenameDialog}
-        open={state.showRenameDialog}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename Workflow</DialogTitle>
-            <DialogDescription>
-              Enter a new name for your workflow.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              actions.handleRenameWorkflow();
-            }}
-          >
-            <div className="space-y-2 py-4">
-              <Label className="ml-1" htmlFor="workflow-name">
-                Workflow Name
-              </Label>
-              <Input
-                id="workflow-name"
-                onChange={(e) => state.setNewWorkflowName(e.target.value)}
-                placeholder="Enter workflow name"
-                value={state.newWorkflowName}
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={() => state.setShowRenameDialog(false)}
-                type="button"
-                variant="outline"
-              >
-                Cancel
-              </Button>
-              <Button disabled={!state.newWorkflowName.trim()} type="submit">
-                Rename
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        onOpenChange={state.setShowCodeDialog}
-        open={state.showCodeDialog}
-      >
-        <DialogContent className="flex max-h-[80vh] max-w-4xl flex-col overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>Generated Workflow Code</DialogTitle>
-            <DialogDescription>
-              This is the generated code for your workflow using the Vercel
-              Workflow SDK. Copy this code or download the ZIP to run it in your
-              own Next.js project.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-auto">
-            <pre className="overflow-auto rounded-lg bg-muted p-4 text-sm">
-              <code>{state.generatedCode}</code>
-            </pre>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => state.setShowCodeDialog(false)}
-              variant="outline"
-            >
-              Close
-            </Button>
-            <Button onClick={actions.handleCopyCode}>Copy to Clipboard</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog
-        onOpenChange={actions.setShowUnsavedRunDialog}
-        open={actions.showUnsavedRunDialog}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes. Would you like to save before running
-              the workflow?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="sm:justify-between">
-            <Button onClick={actions.handleRunWithoutSaving} variant="outline">
-              Run Without Saving
-            </Button>
-            <div className="flex gap-2">
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <Button onClick={actions.handleSaveAndRun}>Save and Run</Button>
-            </div>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
-}
-
 export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   const state = useWorkflowState();
   const actions = useWorkflowActions(state);
@@ -1683,8 +1483,6 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
           </div>
         </div>
       </div>
-
-      <WorkflowDialogsComponent actions={actions} state={state} />
     </>
   );
 };
