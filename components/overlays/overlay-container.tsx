@@ -334,12 +334,6 @@ function MobileOverlayContainer() {
   const springTransition = shouldReduceMotion ? { duration: 0.01 } : iosSpring;
   const isPushing = direction === 1;
 
-  const handleBackdropClick = useCallback(() => {
-    if (currentItem?.options.closeOnBackdropClick !== false) {
-      closeAll();
-    }
-  }, [currentItem?.options.closeOnBackdropClick, closeAll]);
-
   const handleEscapeKey = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape" && currentItem?.options.closeOnEscape !== false) {
@@ -356,112 +350,96 @@ function MobileOverlayContainer() {
     }
   }, [isOpen, handleEscapeKey]);
 
-  const handleExitComplete = useCallback(() => {
-    frozenStackRef.current = [];
-  }, []);
-
-  // Don't render Drawer at all when closed
-  if (!isOpen && frozenStackRef.current.length === 0) {
-    return null;
-  }
+  // Clear frozen stack after drawer closes
+  const handleAnimationEnd = useCallback(() => {
+    if (!isOpen) {
+      frozenStackRef.current = [];
+    }
+  }, [isOpen]);
 
   return (
-    <AnimatePresence onExitComplete={handleExitComplete}>
-      {isOpen && (
-        <DrawerPrimitive.Root open>
-          <DrawerPrimitive.Portal forceMount>
-            {/* Backdrop */}
-            <DrawerPrimitive.Overlay asChild forceMount>
-              <motion.div
-                animate={{ opacity: 1 }}
-                className="fixed inset-0 z-50 bg-black/60"
-                exit={{ opacity: 0 }}
-                initial={{ opacity: 0 }}
-                onClick={handleBackdropClick}
-                transition={{ duration: 0.25 }}
-              />
-            </DrawerPrimitive.Overlay>
+    <DrawerPrimitive.Root
+      onAnimationEnd={handleAnimationEnd}
+      onOpenChange={(open) => {
+        if (!open) {
+          closeAll();
+        }
+      }}
+      open={isOpen}
+    >
+      <DrawerPrimitive.Portal>
+        {/* Backdrop - let Vaul handle animations */}
+        <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
 
-            {/* Drawer container */}
-            <DrawerPrimitive.Content asChild forceMount>
-              <motion.div
-                animate="visible"
-                className={cn(
-                  "fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col",
-                  "rounded-t-2xl border-t bg-background shadow-2xl"
-                )}
-                exit="exit"
-                initial="hidden"
-                variants={drawerContainerVariants}
-              >
-                {/* Accessible title for screen readers */}
-                <DrawerPrimitive.Title className="sr-only">
-                  {renderCurrentItem?.options.title || "Dialog"}
-                </DrawerPrimitive.Title>
+        {/* Drawer container - let Vaul handle open/close animations */}
+        <DrawerPrimitive.Content
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col",
+            "rounded-t-2xl border-t bg-background shadow-2xl"
+          )}
+        >
+          {/* Accessible title for screen readers */}
+          <DrawerPrimitive.Title className="sr-only">
+            {renderCurrentItem?.options.title || "Dialog"}
+          </DrawerPrimitive.Title>
 
-                {/* Drag handle */}
-                <div className="mx-auto mt-3 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/20" />
+          {/* Drag handle */}
+          <div className="mx-auto mt-3 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/20" />
 
-                {/* Content area with height animation */}
-                <LayoutGroup>
-                  <motion.div
-                    className="relative flex-1 overflow-hidden"
-                    layout={isOpen}
-                    style={{ minHeight: minHeight > 0 ? minHeight : "auto" }}
-                    transition={drawerSpring}
-                  >
-                    {/* Content wrapper - all items rendered persistently to preserve state */}
-                    <div className="relative" ref={contentRef}>
-                      {renderStack.map((item, index) => {
-                        const isCurrent = index === currentIndex;
-                        const isPrevious = index < currentIndex;
+          {/* Content area with height animation */}
+          <LayoutGroup>
+            <motion.div
+              className="relative flex-1 overflow-hidden"
+              layout={isOpen}
+              style={{ minHeight: minHeight > 0 ? minHeight : "auto" }}
+              transition={drawerSpring}
+            >
+              {/* Content wrapper - all items rendered persistently to preserve state */}
+              <div className="relative" ref={contentRef}>
+                {renderStack.map((item, index) => {
+                  const isCurrent = index === currentIndex;
+                  const isPrevious = index < currentIndex;
 
-                        // For push onto existing stack: new current item slides in from right
-                        // For first overlay (fresh open): no slide, drawer container handles entrance
-                        // For pop: returning item is already at -35%, animates to 0%
-                        const shouldSlideIn =
-                          isCurrent && isPushing && renderStack.length > 1;
-                        const initialValue = shouldSlideIn
-                          ? { x: "100%", scale: 1, opacity: 1 }
-                          : false;
+                  // For push onto existing stack: new current item slides in from right
+                  // For first overlay (fresh open): no slide, drawer container handles entrance
+                  // For pop: returning item is already at -35%, animates to 0%
+                  const shouldSlideIn =
+                    isCurrent && isPushing && renderStack.length > 1;
+                  const initialValue = shouldSlideIn
+                    ? { x: "100%", scale: 1, opacity: 1 }
+                    : false;
 
-                        return (
-                          <motion.div
-                            animate={{
-                              x: getOverlayXPosition(isCurrent, isPrevious),
-                              scale: isCurrent ? 1 : 0.94,
-                              opacity: isCurrent ? 1 : 0,
-                            }}
-                            aria-hidden={!isCurrent}
-                            className={cn(
-                              "w-full",
-                              isCurrent
-                                ? "relative"
-                                : "pointer-events-none absolute inset-0"
-                            )}
-                            initial={initialValue}
-                            key={item.id}
-                            transition={springTransition}
-                          >
-                            <item.component
-                              overlayId={item.id}
-                              {...item.props}
-                            />
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                </LayoutGroup>
+                  return (
+                    <motion.div
+                      animate={{
+                        x: getOverlayXPosition(isCurrent, isPrevious),
+                        scale: isCurrent ? 1 : 0.94,
+                        opacity: isCurrent ? 1 : 0,
+                      }}
+                      aria-hidden={!isCurrent}
+                      className={cn(
+                        "w-full",
+                        isCurrent
+                          ? "relative"
+                          : "pointer-events-none absolute inset-0"
+                      )}
+                      initial={initialValue}
+                      key={item.id}
+                      transition={springTransition}
+                    >
+                      <item.component overlayId={item.id} {...item.props} />
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </LayoutGroup>
 
-                {/* Safe area padding for iOS */}
-                <div className="h-safe-area-inset-bottom" />
-              </motion.div>
-            </DrawerPrimitive.Content>
-          </DrawerPrimitive.Portal>
-        </DrawerPrimitive.Root>
-      )}
-    </AnimatePresence>
+          {/* Safe area padding for iOS */}
+          <div className="h-safe-area-inset-bottom" />
+        </DrawerPrimitive.Content>
+      </DrawerPrimitive.Portal>
+    </DrawerPrimitive.Root>
   );
 }
 
